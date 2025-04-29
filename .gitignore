@@ -1,0 +1,12 @@
+/*
+!code
+code/__pycache__
+code/*.ipynb
+!analyze
+analyze/__pycache__
+!plot
+plot/__pycache__
+plot/figures/*
+.DS_Store
+!README.md
+!.gitignore
