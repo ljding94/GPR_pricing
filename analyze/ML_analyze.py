@@ -6,6 +6,7 @@ import os
 from scipy.optimize import curve_fit
 import pickle
 from scipy.spatial import cKDTree
+from itertools import product
 
 
 def read_data(folder, data_type):
@@ -15,20 +16,34 @@ def read_data(folder, data_type):
         return read_variance_swap_data(folder)
 
 
-def read_american_put_data(folder):
+def read_american_put_data(folder, N_label=1):
     # read input parameters
-    data = np.loadtxt(f"{folder}/american_put_data.csv", skiprows=1, delimiter=",")
-    params = [data[:, 1], data[:, 2], data[:, 3]]
-    params_tex = [r"$K$", r"$r$", r"$\sigma$"]
-    params_name = ["K", "r", "sigma"]
-    # read target
-    price = data[:, 5]
-    delta = data[:, 6]
-    gamma = data[:, 7]
-    theta = data[:, 8]
-    targets = [price, delta, gamma, theta]
-    targets_tex = [r"$P$", r"$\Delta$", r"$\Gamma$", r"$\Theta$"]
+    params = [[] for i in range(8)]  # K, r + 6 SVI parameters
+    params_tex = [r"$K$", r"$r$", r"$a'$", r"$b$", r"$\rho$", r"$m$", r"$\sigma$", r"$\lambda$"]
+    params_name = ["K", "r", "a1", "b", "rho", "m", "sigma", "lam"]
+
+    targets = [[] for i in range(4)]  # price, delta, gamma, theta
+    targets_tex = [r"$V$", r"$\Delta$", r"$\Gamma$", r"$\Theta$"]
     targets_name = ["price", "delta", "gamma", "theta"]
+
+    for n in range(N_label):
+        filename = f"{folder}/american_put_data_{n}.csv"
+        if not os.path.exists(filename):
+            print(f"File {filename} does not exist. Skipping...")
+            continue
+        data = np.loadtxt(filename, skiprows=1, delimiter=",")
+        # Skip if the file doesn't exist
+
+        if len(params[0]) == 0:
+            for i in range(len(params)):
+                params[i] = data[:, i]
+            for i in range(len(targets)):
+                targets[i] = data[:, i + len(params)]
+        else:
+            for i in range(len(params)):
+                params[i] = np.concatenate((params[i], data[:, i]))
+            for i in range(len(targets)):
+                targets[i] = np.concatenate((targets[i], data[:, i + len(params)]))
 
     data_all = [np.array(params).T, params_tex, params_name, np.array(targets).T, targets_tex, targets_name]
     return data_all
@@ -109,6 +124,25 @@ def targe_distribution(folder, data):
     print(f"Target distribution plot saved to: {file_path}")
 
 
+def auto_kernel(theta_init: dict, bounds: dict):
+    """
+    Build an RBF (+ White) kernel from two possible hyperparams:
+      - 'length_scale'
+      - 'noise_level'
+    """
+    kernel = None
+    for name, init_val in theta_init.items():
+        lb, ub = bounds[name]
+        if name.lower() == "length_scale":
+            comp = RBF(length_scale=init_val, length_scale_bounds=(lb, ub))
+        elif name.lower() == "noise_level":
+            comp = WhiteKernel(noise_level=init_val, noise_level_bounds=(lb, ub))
+        else:
+            raise ValueError(f"Unrecognized hyperparam name “{name}” – " "expected “length_scale” or “noise_level”")
+        kernel = comp if kernel is None else (kernel + comp)
+    return kernel
+
+
 def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
     params, params_tex, params_name, targets, targets_tex, targets_name = data_shuffled
     # Unpack the input data
@@ -116,25 +150,17 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
     targets = targets[: int(perc_train * len(targets))]
 
     # Grid for hyperparameter search (for LML contour)
-    grid_size = 10
-    # Only optimizing over hyperparameters for the "price" target in this example;
-    # extend to additional targets as needed.
-#    theta_per_target = {
-        # following are for the american put
-        # "price": (np.logspace(-2, 1, grid_size), np.logspace(-6, -2, grid_size)),
-        # "delta": (np.logspace(-1, 1, grid_size), np.logspace(-8, -3, grid_size)),
-        #"gamma": (np.logspace(-1, 1, grid_size), np.logspace(-8, -3, grid_size)),
-        #"theta": (np.logspace(-1, 1, grid_size), np.logspace(-8, -3, grid_size)),
-    #}
-    theta_per_target = {
-        # following are for the american put
-        "price": np.logspace(-2, 1, grid_size),
-        # "delta": np.logspace(-1, 1, grid_size),
-        #"gamma": np.logspace(-1, 1, grid_size),
-        #"theta": np.logspace(-1, 1, grid_size),
-        # for variance swap
-        "Kvar": np.logspace(-2, 1, grid_size)
-    }
+    grid_size = 30
+
+    if data_type == "variance_swap":
+        theta_per_target = {"Kvar": {"length_scale": np.logspace(-2, 1, grid_size)}}
+    elif data_type == "american_put":
+        theta_per_target = {
+            #"price": {"length_scale": np.linspace(1.0, 5.0, grid_size), "noise_level": np.logspace(-4, -1, grid_size)},
+            #"delta": {"length_scale": np.linspace(1.0, 3.0, grid_size), "noise_level": np.logspace(-3, 0, grid_size)},
+            "gamma": {"length_scale": np.linspace(1, 3, grid_size), "noise_level": np.logspace(-1, 0, grid_size)},
+            #"theta": {"length_scale": np.linspace(1.0, 3.0, grid_size), "noise_level": np.logspace(-5, -1, grid_size)},
+        }
 
     params_mean = np.mean(params, axis=0)
     params_std = np.std(params, axis=0)
@@ -153,109 +179,96 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
     np.savetxt(f"{folder}/{data_type}_params_avg_std.txt", params_data, delimiter=",", header="params_name,params_mean,params_std", comments="", fmt="%s")
     np.savetxt(f"{folder}/{data_type}_targets_avg_std.txt", targets_data, delimiter=",", header="target_name,target_mean,target_std", comments="", fmt="%s")
 
-    gp_per_target = {}
-
     # Set up subplots for the LML contours per target.
     n_targets = len(targets_name)
-    fig, axs = plt.subplots(1, n_targets, figsize=(6 * n_targets, 6), squeeze=False)
+    fig, axs = plt.subplots(1, n_targets, figsize=(6 * n_targets, 6), squeeze=True)
+    axs = np.atleast_1d(axs)
 
     for idx, target_name in enumerate(targets_name):
-        if target_name not in theta_per_target:
-            # Skip targets that are not defined in our hyperparameter grid,
-            # or add default hyperparameter ranges if desired.
+        grid_spec = theta_per_target.get(target_name)
+        if grid_spec is None:
             continue
 
+        # build initial-center and bounds dicts
+        init_dict = {p: grid_spec[p][len(grid_spec[p]) // 2] for p in grid_spec}
+        bounds_dict = {p: (grid_spec[p][0], grid_spec[p][-1]) for p in grid_spec}
+
+        # --- 3) fit a fixed GP to evaluate LML over the grid ---
+        base_kernel = auto_kernel(init_dict, bounds_dict)
+        gp0 = GaussianProcessRegressor(kernel=base_kernel, alpha=1e-6, optimizer=None)  # turn off built-in optimization
+        gp0.fit(params_norm, targets_norm[:, idx])
+
         print("Training target:", target_name)
-        target_index = targets_name.index(target_name)
-        # Feature matrix remains the same for all targets (input: [K, r, sigma])
-        F_learn = params_norm
 
-        # ------------------------------
-        # INITIAL GP FIT (no optimization)
-        # ------------------------------
-        # First, set up a kernel with initial hyperparameters and no optimizer.
-        #kernel = RBF(length_scale=1.0) + WhiteKernel(noise_level=1.0)
-        kernel = RBF(length_scale=1.0)
-        # Fit GPR without optimizing the kernel parameters (initial fit)
-        gp = GaussianProcessRegressor(kernel=kernel, alpha=1e-6, n_restarts_optimizer=10)
-        gp.fit(F_learn, targets_norm[:, target_index])
-        print("Initial GP kernel:", gp.kernel_)
-        init_theta = np.exp(gp.kernel_.theta)  # Note: kernel_.theta is in log-space.
-        print("Initial kernel parameters (theta):", init_theta)
-        print("Initial Log Marginal Likelihood: %.3f" % gp.log_marginal_likelihood(gp.kernel_.theta))
+        # --- 4) compute LML grid (1D or 2D) ---
+        param_names = list(grid_spec.keys())
+        grids = [grid_spec[p] for p in param_names]
+        mesh = list(product(*grids))
+        shape = [g.size for g in grids]
+        LML = np.zeros(shape)
+        flat_LML = np.zeros(len(mesh))
 
-        # -----------------------------------------------------------
-        # COMPUTE LML ON A 1D GRID (for the only hyperparameter: length scale)
-        # -----------------------------------------------------------
-        theta_range = theta_per_target[target_name]
-        LML = []
-        # Evaluate LML for each candidate length scale (passing its log value)
-        for theta_val in theta_range:
-            lml_val = gp.log_marginal_likelihood(np.array([np.log(theta_val)]))
-            LML.append(lml_val)
+        for i_pts, vals in enumerate(mesh):
+            log_vals = np.log(vals)
+            lml_val = gp0.log_marginal_likelihood(log_vals)
+            flat_LML[i_pts] = lml_val
+            multi_idx = np.unravel_index(i_pts, shape)
+            LML[multi_idx] = lml_val
 
-            print(f"Computing LML for {target_name}: {len(LML)}/{grid_size} completed")
-            print(f"theta_val = {theta_val}, LML = {lml_val}")
+        ax = axs[idx]
+        if len(grids) == 1:
+            ax.plot(grids[0], LML, label="LML")
+            ax.set_xlabel(param_names[0])
+        else:
+            Xg, Yg = np.meshgrid(grids[0], grids[1], indexing="ij")
+            cs = ax.contour(Xg, Yg, LML, levels=500)
+            fig.colorbar(cs, ax=ax, label="LML")
+            ax.set_yscale("log")
+            ax.set_xlabel(param_names[0])
+            ax.set_ylabel(param_names[1])
 
+        # --- 5) full GP optimization ---
+        gp_opt = GaussianProcessRegressor(kernel=auto_kernel(init_dict, bounds_dict), alpha=1e-6, n_restarts_optimizer=10)
+        gp_opt.fit(params_norm, targets_norm[:, idx])
+        theta_opt = np.exp(gp_opt.kernel_.theta)
+        lml_opt = gp_opt.log_marginal_likelihood(gp_opt.kernel_.theta)
 
-        LML = np.array(LML)
+        # mark optimum
+        if theta_opt.size == 1:
+            ax.plot(theta_opt[0], lml_opt, "rx", markersize=10)
+        else:
+            ax.plot(theta_opt[0], theta_opt[1], "rx", markersize=10)
+        ax.set_title(f"{target_name} opt: {theta_opt}")
 
-        ax = axs[0, target_index]
-        ax.plot(theta_range, LML, label="LML")
+        # --- 6) save everything into one .npz ---
+        save_dict = {"LML": LML, "theta_opt": theta_opt, "LML_opt": lml_opt}
+        # add each grid array
+        for name, grid in zip(param_names, grids):
+            save_dict[f"{name}_grid"] = grid
 
-        # -----------------------------------------------------------
-        # OPTIMIZATION OF THE GP HYPERPARAMETER (length scale only)
-        # -----------------------------------------------------------
-        # Use the midpoint of theta_range as an initial guess.
-        init_theta_val = theta_range[grid_size // 2]
-        kernel = RBF(length_scale=init_theta_val, length_scale_bounds=(theta_range[0], theta_range[-1]))
-        gp = GaussianProcessRegressor(kernel=kernel, alpha=1e-6, n_restarts_optimizer=10)
-        gp.fit(F_learn, targets_norm[:, target_index])
-        gp_per_target[target_name] = gp
+        np.savez_compressed(f"{folder}/{data_type}_{target_name}_LML.npz", **save_dict)
 
-        print("\nOptimized GP kernel for {}: {}".format(target_name, gp.kernel_))
-        opt_theta = np.exp(gp.kernel_.theta)  # optimized length scale
-        print("Optimized kernel length scale (theta):", opt_theta)
-        opt_lml = gp.log_marginal_likelihood(gp.kernel_.theta)
-        print("Optimized Log Marginal Likelihood: %.3f" % opt_lml)
-
-        # Plot the optimized hyperparameter on the LML curve.
-        #print(len(opt_theta), len(opt_lml))
-        print("opt_theta, opt_lml")
-        print(opt_theta, opt_lml)
-        ax.plot(opt_theta, [opt_lml], "x", color="red", markersize=10, markeredgewidth=2, label=f"l={opt_theta[0]:.2e}")
-        ax.set_xscale("log")
-        ax.set_xlabel(r"$\ell$ (length scale)")
-        ax.set_ylabel("Log Marginal Likelihood")
-        ax.set_title(f"LML vs. Length Scale for {target_name}")
-        ax.legend()
-
-        # ------------------------------
-        # SAVE LML GRID DATA AND MODEL
-        # ------------------------------
-        data_save = np.column_stack((np.full(len(theta_range), opt_theta), theta_range, LML))
-        column_names = ["gp_theta", "theta", "LML"]
-        np.savetxt(f"{folder}/{data_type}_{target_name}_LML.txt", data_save, delimiter=",",
-                   header=",".join(column_names), comments="", fmt="%.6e")
+        # --- 7) pickle the optimized GP ---
         with open(f"{folder}/{data_type}_gp_{target_name}.pkl", "wb") as f:
-            pickle.dump(gp, f)
+            pickle.dump(gp_opt, f)
+
         print(f"Model and LML data for {data_type}: {target_name} saved.")
 
     # Save the average and standard deviation for the targets.
 
     plt.tight_layout()
-    plt.savefig(f"{folder}/{data_type}_LML_subplots.png", dpi=300)
+    plt.savefig(f"{folder}/{data_type}_LML_plots.png", dpi=300)
     plt.show()
     plt.close()
 
 
 def read_gp_and_params_stats(folder, data_shuffled, data_type):
-    params, params_tex, params_name, target, target_tex, target_name = data_shuffled
+    params, params_tex, params_name, target, target_tex, targets_name = data_shuffled
     params_stats = np.genfromtxt(f"{folder}/{data_type}_params_avg_std.txt", delimiter=",", skip_header=1, usecols=(1, 2))
     target_stats = np.genfromtxt(f"{folder}/{data_type}_targets_avg_std.txt", delimiter=",", skip_header=1, usecols=(1, 2))
 
     gp_per_params = {}
-    for tname in target_name:
+    for tname in targets_name:
         if os.path.exists(f"{folder}/{data_type}_gp_{tname}.pkl"):
             with open(f"{folder}/{data_type}_gp_{tname}.pkl", "rb") as f:
                 gp_per_params[tname] = pickle.load(f)
@@ -295,7 +308,7 @@ def GaussianProcess_prediction(folder, data_shuffled, perc_train, data_type):
         Y_predict = Y_predict * target_std[target_index] + target_mean[target_index]
         Y_predict_err = Y_predict_err * target_std[target_index]
 
-        axs[target_index].scatter(Y, Y_predict, marker="o")
+        axs[target_index].scatter(Y, Y_predict, marker="o", s=5, facecolor="none", edgecolor="black", label="data")
         axs[target_index].plot(Y, Y, "--")
         min_val = min(np.min(Y), np.min(Y_predict - Y_predict_err))
         max_val = max(np.max(Y), np.max(Y_predict + Y_predict_err))
@@ -311,43 +324,3 @@ def GaussianProcess_prediction(folder, data_shuffled, perc_train, data_type):
 
     plt.savefig(f"{folder}/{data_type}_prediction.png", dpi=300)
     plt.close()
-
-
-def ax_fit(x, a):
-    return a * x
-
-
-def fit_Rg2(q, Sq):
-    popt, pcov = curve_fit(ax_fit, q**2 / 3, (1 - Sq))
-    perr = np.sqrt(np.diag(pcov))
-    return popt[0], perr[0]
-
-
-def calc_Sq_fitted_Rg2(folder, parameters_test, params_names):
-    segment_type, params, params_names, Sq, Sq_err, q = read_Sq_data(folder, parameters_test)
-
-    MC_Rg2 = params[:, params_names.index("Rg2")]
-    # qfns = [10,20,30,40]
-    qfns = [50, 55, 60, 65, 70]
-    Rg2s = []
-    Rg2_errs = []
-    plt.figure()
-    for qfn in qfns:
-        Rg2s.append([])
-        Rg2_errs.append([])
-        for i in range(len(Sq)):
-            Rg2, Rg2_err = fit_Rg2(q[:qfn], Sq[i][:qfn])
-            Rg2s[-1].append(Rg2)
-            Rg2_errs[-1].append(Rg2_err)
-
-        plt.scatter(MC_Rg2, Rg2s[-1], alpha=0.5, label=f"qf={q[qfn-1]}")
-    plt.plot(MC_Rg2, MC_Rg2, "k--")
-    plt.xlabel("MC Rg2")
-    plt.ylabel("Fitted Rg2")
-    plt.legend()
-    plt.savefig(f"{folder}/{segment_type}_Rg2_fit.png", dpi=300)
-    plt.close()
-
-    data = np.column_stack(([MC_Rg2] + Rg2s))
-    column_names = ["MC Rg2", "fitted Rg2"]
-    np.savetxt(f"{folder}/data_{segment_type}_fitted_Rg2.txt", data, delimiter=",", header=",".join(column_names), comments="")

@@ -125,7 +125,21 @@ def bs_price(S, K, T, r, vol, type):
     else:
         raise ValueError("Invalid option type. Use 'call' or 'put'.")
 
-    return price
+    # Calculate option Greeks using Black-Scholes formulas
+    pdf_d1 = norm.pdf(d1)
+    if type.lower() == "call":
+        delta = norm.cdf(d1)
+        theta = (-S * pdf_d1 * vol / (2 * np.sqrt(T))
+                 - r * K * np.exp(-r * T) * norm.cdf(d2))
+    elif type.lower() == "put":
+        delta = norm.cdf(d1) - 1
+        theta = (-S * pdf_d1 * vol / (2 * np.sqrt(T))
+                 + r * K * np.exp(-r * T) * norm.cdf(-d2))
+    gamma = pdf_d1 / (S * vol * np.sqrt(T))
+
+    # Optionally, print or log the Greeks for debugging
+    #print(f"Delta: {delta}, Gamma: {gamma}, Theta: {theta}")
+    return price, delta, gamma, theta
 
 
 def build_binomial_tree(S0, T, r, N, vol_arg, vol_type):  # a1, b, rho, m, sigma, lam):
