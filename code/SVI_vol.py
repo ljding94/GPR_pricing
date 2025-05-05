@@ -48,6 +48,7 @@ def local_var(k, T, a1, b, rho, m, sigma, lam):
 
     # sigma_loc = np.sqrt(vL)
     return max(vL, 1e-10)
+    #return vL
 
 
 def local_vol2(S0, S, t, r, a1, b, rho, m, sigma, lam):

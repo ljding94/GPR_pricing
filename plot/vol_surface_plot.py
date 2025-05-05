@@ -5,15 +5,15 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "code"))
 from SVI_vol import calc_raw_SVI_skew_T1, calc_raw_SVI_surface, local_var, local_vol2
 
 
-
 def plot_illustrate_svi_curve(tex_lw=240.71031, ppi=72):
     # baseline SVI parameters
-    a1, b, rho, m, sigma = 0.005, 0.1, 0.2, 0.3, 0.4
-    k_vals = np.linspace(-0.15, 0.15, 100)
+    a1, b, rho, m, sigma = 0.01, 0.15, 0.2, 0.2, 0.5
+    k_vals = np.linspace(-0.2, 0.2, 100)
 
     # create figure and subplots
     fig = plt.figure(figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 1), dpi=ppi)
@@ -22,14 +22,15 @@ def plot_illustrate_svi_curve(tex_lw=240.71031, ppi=72):
     ax3 = plt.subplot(233, sharey=ax1, sharex=ax1)
     ax4 = plt.subplot(234, sharey=ax1, sharex=ax1)
     ax5 = plt.subplot(235, sharey=ax1, sharex=ax1)
+    ax6 = plt.subplot(236, sharey=ax1)
 
     colormap = plt.get_cmap("rainbow")
     base_params = dict(a1=a1, b=b, rho=rho, m=m, sigma=sigma)
     configs = [
         (ax1, "a1", np.arange(0.00, 0.0201, 0.002)),
-        (ax2, "b", np.arange(0.0, 0.41, 0.04)),
-        (ax3, "rho", np.arange(-0.8, 0.81, 0.2)),
-        (ax4, "m", np.arange(-0.5, 1.01, 0.25)),
+        (ax2, "b", np.arange(0.0, 0.31, 0.03)),
+        (ax3, "rho", np.arange(-0.4, 0.81, 0.2)),
+        (ax4, "m", np.arange(-0.2, 0.61, 0.04)),
         (ax5, "sigma", np.arange(0.00, 1.01, 0.1)),
     ]
     tex = {"a1": r"$a'$", "b": r"$b$", "rho": r"$\rho$", "m": r"$m$", "sigma": r"$\sigma$"}
@@ -60,10 +61,46 @@ def plot_illustrate_svi_curve(tex_lw=240.71031, ppi=72):
 
         ax.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=False, labelsize=7)
         ax.set_xlabel(r"$k$", fontsize=9, labelpad=0)
-    ax1.set_ylabel(r"$w(k,\chi'_R)$", fontsize=9, labelpad=0)
-    ax4.set_ylabel(r"$w(k,\chi'_R)$", fontsize=9, labelpad=0)
+    ax1.set_ylabel(r"$w(k; \chi_R)$", fontsize=9, labelpad=0)
+    ax4.set_ylabel(r"$w(k; \chi_R)$", fontsize=9, labelpad=0)
     ax1.tick_params(labelleft=True)
     ax4.tick_params(labelleft=True)
+    ax1.xaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax1.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+    w0 = calc_raw_SVI_skew_T1(0, a1, b, rho, m, sigma)
+    T = np.linspace(0.01, 1.0, 100)
+    lams = np.arange(0.0, 1.01, 0.2)
+    colors = colormap(np.linspace(0, 1, len(lams)))
+    for i, lam in enumerate(lams):
+        fT = T * np.exp(lam * (1 - T))
+        ax6.plot(T, fT * w0, lw=1, color=colors[i], label=f"{lam:.2f}")
+    norm = Normalize(vmin=lams.min(), vmax=lams.max())
+    sm = ScalarMappable(norm=norm, cmap=colormap)
+    sm.set_array([])
+    divider = make_axes_locatable(ax6)
+    cax = divider.append_axes("top", size="3%", pad=0.03)
+    cb = plt.colorbar(sm, cax=cax, orientation="horizontal")
+    cb.set_label(r"$\lambda$", fontsize=7, labelpad=1.5)
+    cax.xaxis.set_ticks_position("top")
+    cax.xaxis.set_label_position("top")
+    cax.xaxis.set_tick_params(which="both", direction="in", top="on", right="on", labelsize=7, pad=0)
+    start, end = lams.min(), lams.max()
+    mid = (start + end) / 2
+    cax.set_xticks([start, mid, end])
+    ax6.yaxis.set_label_position("right")
+    ax6.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=False, labelsize=7)
+    ax6.set_xlabel(r"$T$", fontsize=9, labelpad=0)
+    ax6.set_ylabel(r"$w(k=0;\chi'_R)$", fontsize=9, labelpad=0)
+    #ax6.yaxis.tick_right()
+    ax6.xaxis.set_major_locator(plt.MultipleLocator(0.5))
+    ax6.xaxis.set_minor_locator(plt.MultipleLocator(0.25))
+
+    # add annotations
+    annot = [r"$(a)$", r"$(b)$", r"$(c)$", r"$(d)$", r"$(e)$", r"$(f)$"]
+    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6]):
+        ax.text(0.7,0.8, annot[i], transform=ax.transAxes, fontsize=9)
+
 
     # finalize and save
     plt.tight_layout(pad=0.2)
