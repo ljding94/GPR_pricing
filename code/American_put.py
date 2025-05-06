@@ -510,7 +510,7 @@ def generate_american_put_data_set(folder, label, N_data, data_type="train"):
     S0 = 1
 
     T = 1.0
-    if type == "train":
+    if data_type == "train":
         # logK_vals = np.random.uniform(-0.15, 0.15, N_data)  # log strike prices
         K_vals = np.random.uniform(0.85, 1.15, N_data)  # strike prices
         # K_vals = S0 * np.exp(logK_vals)  # strike prices
@@ -522,7 +522,7 @@ def generate_american_put_data_set(folder, label, N_data, data_type="train"):
         m_vals = np.random.uniform(-0.2, 0.6, N_data)  # m unlimited
         sigma_vals = np.random.uniform(0.00, 1.0, N_data)  # sigma>0
         lam_vals = np.random.uniform(0.00, 1.0, N_data)  # lam>0
-    elif type == "test":
+    elif data_type == "test":
         K_vals = np.random.uniform(0.9, 1.1, N_data)
         r_vals = np.random.uniform(0.01, 0.05, N_data)
         # SVI parameters

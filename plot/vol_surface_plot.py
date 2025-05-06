@@ -171,6 +171,9 @@ def plot_illustrative_vol_surface_local_vol(tex_lw=240.71031, ppi=72):
     # ax2.set_zlim(0, 0.02)
     ax2.view_init(elev=20, azim=-60)
 
+    ax1.text2D(0.8,0.8, r"$(a)$", transform=ax1.transAxes, fontsize=9)
+    ax2.text2D(0.8,0.8, r"$(b)$", transform=ax2.transAxes, fontsize=9)
+
     plt.tight_layout(pad=1.5, w_pad=-2)
     plt.savefig("./figures/svi_surface.pdf", format="pdf")
     plt.savefig("./figures/svi_surface.png", dpi=300)

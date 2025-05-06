@@ -30,11 +30,11 @@ def variace_swap_strike(a1, b, rho, m, sigma, S0, T, r):
     w_call_vals = calc_raw_SVI_variance(k_call_vals, a, b, rho, m, sigma)
     vol_call_vals = np.sqrt(w_call_vals / T)
     vol_put_vals = np.sqrt(w_put_vals / T)
-    print("vol_call_vals", vol_call_vals)
+    #print("vol_call_vals", vol_call_vals)
 
     # calculate all bs put and call prices
-    bs_call_vals = bs_price(S0, K_call_vals, T, r, vol_call_vals, type="call")
-    bs_put_vals = bs_price(S0, K_put_vals, T, r, vol_put_vals, type="put")
+    bs_call_vals, delta, gamma, theta = bs_price(S0, K_call_vals, T, r, vol_call_vals, type="call")
+    bs_put_vals, delta, gamma, theta = bs_price(S0, K_put_vals, T, r, vol_put_vals, type="put")
 
     # variance swap strike
     Kvar = 2 / T * (r * T - (1 * np.exp(r * T) - 1))
@@ -51,21 +51,29 @@ def variace_swap_strike(a1, b, rho, m, sigma, S0, T, r):
     return Kvar
 
 
-def generate_variance_swap_data(folder, N_data=1000):
+def generate_variance_swap_data(folder, N_data=1000, data_type="train"):
     """
     Generate variance swap data for a range of parameters.
     """
     # Parameters
     S0 = 1
-
     T = 1.0
-    r_vals = np.random.uniform(0.001, 0.06, N_data)  # risk-free rate
-    # SVI parameters
-    a1_vals = np.random.uniform(0.001, 0.01, N_data)  # a1>0
-    b_vals = np.random.uniform(0.05, 0.4, N_data)  # b>0
-    rho_vals = np.random.uniform(-0.8, 0.8, N_data)  # |rho|<1
-    m_vals = np.random.uniform(-0.5, 1.0, N_data)  # m unlimited
-    sigma_vals = np.random.uniform(0.05, 1.0, N_data)  # sigma>0
+    if data_type == "train":
+        r_vals = np.random.uniform(0.00, 0.06, N_data)  # risk-free rate
+        # SVI parameters
+        a1_vals = np.random.uniform(0.00, 0.02, N_data)  # a1>0
+        b_vals = np.random.uniform(0.00, 0.3, N_data)  # b>0
+        rho_vals = np.random.uniform(-0.4, 0.8, N_data)  # |rho|<1
+        m_vals = np.random.uniform(-0.2, 0.6, N_data)  # m unlimited
+        sigma_vals = np.random.uniform(0.00, 1.0, N_data)  # sigma>0
+    elif data_type == "test":
+        r_vals = np.random.uniform(0.01, 0.05, N_data)
+        # SVI parameters
+        a1_vals = np.random.uniform(0.005, 0.015, N_data)
+        b_vals = np.random.uniform(0.05, 0.25, N_data)
+        rho_vals = np.random.uniform(-0.3, 0.7, N_data)
+        m_vals = np.random.uniform(-0.1, 0.5, N_data)
+        sigma_vals = np.random.uniform(0.1, 0.9, N_data)
 
     Kvars_vals = np.zeros(N_data)
     for i in range(N_data):
@@ -76,6 +84,6 @@ def generate_variance_swap_data(folder, N_data=1000):
     # Save data to a CSV file
     data = np.column_stack((r_vals, a1_vals, b_vals, rho_vals, m_vals, sigma_vals, Kvars_vals, Kvars_vals))
     header = "r,a1,b,rho,m,sigma,Kvar,Kvar" # extra column as place holder
-    file_path = f"{folder}/variance_swap_data.csv"
+    file_path = f"{folder}/variance_swap_{data_type}_data.csv"
     np.savetxt(file_path, data, delimiter=",", header=header, comments='')
     print(f"Data saved to {file_path}")

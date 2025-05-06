@@ -153,7 +153,7 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
     grid_size = 30
 
     if data_type == "variance_swap":
-        theta_per_target = {"Kvar": {"length_scale": np.logspace(-2, 1, grid_size)}}
+        theta_per_target = {"Kvar": {"length_scale": np.linspace(1, 3, grid_size)}}
     elif data_type == "american_put":
         theta_per_target = {
             #"price": {"length_scale": np.linspace(1.0, 5.0, grid_size), "noise_level": np.logspace(-4, -1, grid_size)},
@@ -210,7 +210,7 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
 
         for i_pts, vals in enumerate(mesh):
             log_vals = np.log(vals)
-            lml_val = gp0.log_marginal_likelihood(log_vals)
+            lml_val = gp0.log_marginal_likelihood(log_vals)/params_norm.shape[0]
             flat_LML[i_pts] = lml_val
             multi_idx = np.unravel_index(i_pts, shape)
             LML[multi_idx] = lml_val
@@ -231,7 +231,7 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
         gp_opt = GaussianProcessRegressor(kernel=auto_kernel(init_dict, bounds_dict), alpha=1e-6, n_restarts_optimizer=10)
         gp_opt.fit(params_norm, targets_norm[:, idx])
         theta_opt = np.exp(gp_opt.kernel_.theta)
-        lml_opt = gp_opt.log_marginal_likelihood(gp_opt.kernel_.theta)
+        lml_opt = gp_opt.log_marginal_likelihood(gp_opt.kernel_.theta)/params_norm.shape[0]
 
         # mark optimum
         if theta_opt.size == 1:
