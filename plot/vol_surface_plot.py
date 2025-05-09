@@ -112,7 +112,7 @@ def plot_illustrate_svi_curve(tex_lw=240.71031, ppi=72):
 
 def plot_illustrative_vol_surface_local_vol(tex_lw=240.71031, ppi=72):
     # baseline SVI parameters
-    a1, b, rho, m, sigma = 0.005, 0.1, 0.2, 0.3, 0.4
+    a1, b, rho, m, sigma = 0.01, 0.15, 0.2, 0.2, 0.5
     lam = 0.5
     k_vals = np.linspace(-0.15, 0.15, 100)
 

@@ -9,6 +9,15 @@ from scipy.spatial import cKDTree
 from itertools import product
 
 
+def plot_data_distribution(targets_train, targets_test):
+    print(targets_test)
+    plt.figure(figsize=(10, 6))
+    plt.hist(targets_train, bins=100, histtype="step", label="Train", density=True)
+    plt.hist(targets_test, bins=100,  histtype="step",label="Test", density=True)
+    plt.legend()
+    plt.show()
+    plt.close()
+
 def read_data(folder, data_type):
     if data_type == "american_put":
         return read_american_put_data(folder)
@@ -16,7 +25,7 @@ def read_data(folder, data_type):
         return read_variance_swap_data(folder)
 
 
-def read_american_put_data(folder, N_label=1):
+def read_american_put_data(folder, data_type, N_label=1):
     # read input parameters
     params = [[] for i in range(8)]  # K, r + 6 SVI parameters
     params_tex = [r"$K$", r"$r$", r"$a'$", r"$b$", r"$\rho$", r"$m$", r"$\sigma$", r"$\lambda$"]
@@ -27,7 +36,7 @@ def read_american_put_data(folder, N_label=1):
     targets_name = ["price", "delta", "gamma", "theta"]
 
     for n in range(N_label):
-        filename = f"{folder}/american_put_data_{n}.csv"
+        filename = f"{folder}/american_put_{data_type}_data_{n}.csv"
         if not os.path.exists(filename):
             print(f"File {filename} does not exist. Skipping...")
             continue
@@ -49,9 +58,9 @@ def read_american_put_data(folder, N_label=1):
     return data_all
 
 
-def read_variance_swap_data(folder):
+def read_variance_swap_data(folder, data_type):
     # read input parameters
-    data = np.loadtxt(f"{folder}/variance_swap_data.csv", skiprows=1, delimiter=",")
+    data = np.loadtxt(f"{folder}/variance_swap_{data_type}_data.csv", skiprows=1, delimiter=",")
     params = [data[:, 0], data[:, 1], data[:, 2], data[:, 3], data[:, 4], data[:, 5]]
     params_tex = [r"$r$", r"$a_1$", r"$b$", r"$\rho$", r"$m$", r"$\sigma$"]
     params_name = ["r", "a1", "b", "rho", "m", "sigma"]
@@ -143,7 +152,7 @@ def auto_kernel(theta_init: dict, bounds: dict):
     return kernel
 
 
-def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
+def GaussianProcess_optimization(folder, data_shuffled, perc_train, product_type):
     params, params_tex, params_name, targets, targets_tex, targets_name = data_shuffled
     # Unpack the input data
     params = params[: int(perc_train * len(params))]
@@ -152,14 +161,14 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
     # Grid for hyperparameter search (for LML contour)
     grid_size = 30
 
-    if data_type == "variance_swap":
+    if product_type == "variance_swap":
         theta_per_target = {"Kvar": {"length_scale": np.linspace(1, 3, grid_size)}}
-    elif data_type == "american_put":
+    elif product_type == "american_put":
         theta_per_target = {
-            #"price": {"length_scale": np.linspace(1.0, 5.0, grid_size), "noise_level": np.logspace(-4, -1, grid_size)},
-            #"delta": {"length_scale": np.linspace(1.0, 3.0, grid_size), "noise_level": np.logspace(-3, 0, grid_size)},
+            "price": {"length_scale": np.linspace(2.5, 3.5, grid_size), "noise_level": np.logspace(-3, -2, grid_size)},
+            "delta": {"length_scale": np.linspace(2.0, 4.0, grid_size), "noise_level": np.logspace(-2, -1, grid_size)},
             "gamma": {"length_scale": np.linspace(1, 3, grid_size), "noise_level": np.logspace(-1, 0, grid_size)},
-            #"theta": {"length_scale": np.linspace(1.0, 3.0, grid_size), "noise_level": np.logspace(-5, -1, grid_size)},
+            "theta": {"length_scale": np.linspace(1.5, 3.0, grid_size), "noise_level": np.logspace(-3 , -1, grid_size)},
         }
 
     params_mean = np.mean(params, axis=0)
@@ -176,8 +185,8 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
     targets_data = np.column_stack((targets_name, targets_mean, targets_std))
 
     # Save the data as separate sections in the same file
-    np.savetxt(f"{folder}/{data_type}_params_avg_std.txt", params_data, delimiter=",", header="params_name,params_mean,params_std", comments="", fmt="%s")
-    np.savetxt(f"{folder}/{data_type}_targets_avg_std.txt", targets_data, delimiter=",", header="target_name,target_mean,target_std", comments="", fmt="%s")
+    np.savetxt(f"{folder}/{product_type}_params_avg_std.txt", params_data, delimiter=",", header="params_name,params_mean,params_std", comments="", fmt="%s")
+    np.savetxt(f"{folder}/{product_type}_targets_avg_std.txt", targets_data, delimiter=",", header="target_name,target_mean,target_std", comments="", fmt="%s")
 
     # Set up subplots for the LML contours per target.
     n_targets = len(targets_name)
@@ -246,44 +255,44 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type):
         for name, grid in zip(param_names, grids):
             save_dict[f"{name}_grid"] = grid
 
-        np.savez_compressed(f"{folder}/{data_type}_{target_name}_LML.npz", **save_dict)
+        np.savez_compressed(f"{folder}/{product_type}_{target_name}_LML.npz", **save_dict)
 
         # --- 7) pickle the optimized GP ---
-        with open(f"{folder}/{data_type}_gp_{target_name}.pkl", "wb") as f:
+        with open(f"{folder}/{product_type}_gp_{target_name}.pkl", "wb") as f:
             pickle.dump(gp_opt, f)
 
-        print(f"Model and LML data for {data_type}: {target_name} saved.")
+        print(f"Model and LML data for {product_type}: {target_name} saved.")
 
     # Save the average and standard deviation for the targets.
 
     plt.tight_layout()
-    plt.savefig(f"{folder}/{data_type}_LML_plots.png", dpi=300)
+    plt.savefig(f"{folder}/{product_type}_LML_plots.png", dpi=300)
     plt.show()
     plt.close()
 
 
-def read_gp_and_params_stats(folder, data_shuffled, data_type):
+def read_gp_and_params_stats(folder, data_shuffled, product_type):
     params, params_tex, params_name, target, target_tex, targets_name = data_shuffled
-    params_stats = np.genfromtxt(f"{folder}/{data_type}_params_avg_std.txt", delimiter=",", skip_header=1, usecols=(1, 2))
-    target_stats = np.genfromtxt(f"{folder}/{data_type}_targets_avg_std.txt", delimiter=",", skip_header=1, usecols=(1, 2))
+    params_stats = np.genfromtxt(f"{folder}/{product_type}_params_avg_std.txt", delimiter=",", skip_header=1, usecols=(1, 2))
+    target_stats = np.genfromtxt(f"{folder}/{product_type}_targets_avg_std.txt", delimiter=",", skip_header=1, usecols=(1, 2))
 
     gp_per_params = {}
     for tname in targets_name:
-        if os.path.exists(f"{folder}/{data_type}_gp_{tname}.pkl"):
-            with open(f"{folder}/{data_type}_gp_{tname}.pkl", "rb") as f:
+        if os.path.exists(f"{folder}/{product_type}_gp_{tname}.pkl"):
+            with open(f"{folder}/{product_type}_gp_{tname}.pkl", "rb") as f:
                 gp_per_params[tname] = pickle.load(f)
     return params_stats, target_stats, gp_per_params
 
 
-def GaussianProcess_prediction(folder, data_shuffled, perc_train, data_type):
+def GaussianProcess_prediction(folder, data, product_type):
 
-    params, params_tex, params_name, target, target_tex, target_name = data_shuffled
-    params_stats, target_stats, gp_per_params = read_gp_and_params_stats(folder, data_shuffled, data_type)
+    params, params_tex, params_name, target, target_tex, target_name = data
+    params_stats, target_stats, gp_per_params = read_gp_and_params_stats(folder, data, product_type)
     params_mean, params_std = params_stats[:, 0], params_stats[:, 1]
     target_mean, target_std = target_stats[:, 0], target_stats[:, 1]
     # Unpack the input data
-    params_test = params[int(perc_train * len(params)) :]
-    target_test = target[int(perc_train * len(target)) :]
+    params_test = params
+    target_test = target
 
     # normalize the test data
     params_test = (params_test - params_mean) / params_std
@@ -320,7 +329,7 @@ def GaussianProcess_prediction(folder, data_shuffled, perc_train, data_type):
         # save data to file
         data = np.column_stack((Y, Y_predict, Y_predict_err))
         column_names = [tname, "ML predicted", "ML predicted uncertainty"]
-        np.savetxt(f"{folder}/{data_type}_{tname}_prediction.txt", data, delimiter=",", header=",".join(column_names), comments="")
+        np.savetxt(f"{folder}/{product_type}_{tname}_prediction.txt", data, delimiter=",", header=",".join(column_names), comments="")
 
-    plt.savefig(f"{folder}/{data_type}_prediction.png", dpi=300)
+    plt.savefig(f"{folder}/{product_type}_prediction.png", dpi=300)
     plt.close()

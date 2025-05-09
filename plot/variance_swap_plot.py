@@ -52,6 +52,8 @@ def plot_Kvar_versus_SVI_params(tex_lw=240.71031, ppi=72):
         ax.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=False, labelsize=7, pad=1)
         ax.xaxis.set_major_locator(plt.MultipleLocator(mlocator))
         ax.xaxis.set_minor_locator(plt.MultipleLocator(mlocator * 0.5))
+    ax1.yaxis.set_major_locator(plt.MultipleLocator(0.01))
+    ax1.yaxis.set_minor_locator(plt.MultipleLocator(0.005))
     ax1.tick_params(labelleft=True)
     ax4.tick_params(labelleft=True)
     ax1.set_ylabel(r"$K_{var}$", fontsize=9, labelpad=0)
@@ -72,7 +74,7 @@ def plot_Kvar_versus_SVI_params(tex_lw=240.71031, ppi=72):
 
 
 def plot_variance_swap_GPR_fitting(tex_lw=240.71031, ppi=72):
-
+    folder = "../data/20250505_vs"
     # create figure and subplots
     fig = plt.figure(figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 0.5), dpi=ppi)
     ax1 = plt.subplot(121)
@@ -85,7 +87,7 @@ def plot_variance_swap_GPR_fitting(tex_lw=240.71031, ppi=72):
     for name, grid in zip(param_names, grids):
         save_dict[f"{name}_grid"] = grid
     """
-    data = np.load("../data/20250505_vs/variance_swap_Kvar_LML.npz")
+    data = np.load(f"{folder}/variance_swap_Kvar_LML.npz")
     print("data", data.files)
 
     LML = data["LML"]
@@ -96,32 +98,36 @@ def plot_variance_swap_GPR_fitting(tex_lw=240.71031, ppi=72):
     l_grid = data["length_scale_grid"]
 
     ax1.plot(l_grid, LML, lw=1, color="royalblue")
-    ax1.plot(theta_opt[0], LML_opt, "rx", markersize=10)
+    ax1.plot(theta_opt[0], LML_opt, "rx", markersize=8)
     ax1.set_xlabel(r"$l_g$", fontsize=9, labelpad=0)
     ax1.set_ylabel(r"$LML$", fontsize=9, labelpad=0)
     ax1.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=True, labelsize=7, pad=2)
     ax1.xaxis.set_major_locator(plt.MultipleLocator(1))
     ax1.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
-    ax1.yaxis.set_major_locator(plt.MultipleLocator(10))
-    ax1.yaxis.set_minor_locator(plt.MultipleLocator(5))
+    ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
+    ax1.yaxis.set_minor_locator(plt.MultipleLocator(2.5))
     ax1.text(0.2, 0.6, r"$K_{var}$", fontsize=9, transform=ax1.transAxes)
 
     # get prediction data
     data = np.loadtxt("../data/20250505_vs/variance_swap_Kvar_prediction.txt", skiprows=1, delimiter=",")
     Kvar, ML_predicted = data[:, 0], data[:, 1]
 
-    ax2.scatter(Kvar, ML_predicted, marker="o", s=2, facecolor="none", edgecolor="black", label="data")
-    Err = 100*np.abs(ML_predicted - Kvar)/np.maximum(Kvar, ML_predicted)
+    ax2.scatter(Kvar, ML_predicted, marker=".", s=2, facecolor="none", edgecolor="black")
+    #Err = 100*np.abs(ML_predicted - Kvar)/np.maximum(Kvar, ML_predicted)
+    scale = np.mean(np.abs(Kvar))  # or np.median(np.abs(Y)), or (Y.max()-Y.min())
+    Err = 100 * np.abs(ML_predicted - Kvar) / scale
     Err = np.mean(Err)
     ax2.text(0.5, 0.3, rf"Err={Err:.1f}%", fontsize=9, transform=ax2.transAxes)
     ax2.grid()
     ax2.set_xlabel(r"Ground Truth", fontsize=9, labelpad=0)
     ax2.set_ylabel(r"ML Predicted", fontsize=9, labelpad=0)
     ax2.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=True, labelsize=7, pad=2)
-    ax2.xaxis.set_major_locator(plt.MultipleLocator(0.2))
-    ax2.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
-    ax2.yaxis.set_major_locator(plt.MultipleLocator(0.2))
-    ax2.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax2.xaxis.set_major_locator(plt.MultipleLocator(0.05))
+    ax2.xaxis.set_minor_locator(plt.MultipleLocator(0.025))
+    ax2.yaxis.set_major_locator(plt.MultipleLocator(0.05))
+    ax2.yaxis.set_minor_locator(plt.MultipleLocator(0.025))
+    ax2.set_xlim(-0.01, )
+    ax2.set_ylim(-0.01, )
     ax2.text(0.2, 0.6, r"$K_{var}$", fontsize=9, transform=ax2.transAxes)
 
     # add annotations

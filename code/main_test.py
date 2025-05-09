@@ -229,14 +229,28 @@ def plot_price_and_greeks(svi_params, r, K, T):
     plt.close()
 
 
+def test_line_overlap():
+    x = np.linspace(0.5, 1.5, 100)
+    y = np.sin(np.pi * x)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(x, y, linestyle=(0, (1, 4)), label="Line 0")
+    plt.plot(x, y+0.1, linestyle=(0, (2, 3)), label="Line 1")
+    plt.plot(x, y+0.2,linestyle=(-1, (2, 3)), label="Line 2")
+    plt.plot(x, y+0.3,linestyle=(-2, (2, 3)), label="Line 3")
+    plt.plot(x, y+0.4,linestyle=(-3, (2, 3)), label="Line 4")
+    plt.plot(x, y+0.5,linestyle=(-4, (2, 3)), label="Line 5")
+    plt.legend
+    plt.show()
 def main():
     # S, P, lbd = build_binomial_tree(100, 5, 0.03, 5, (100, 0.1, -0.05), "Derman")
     # S, P, lbd = build_binomial_tree(100, 2, 0.03, 2, (0.1,0), "flat")
-
+    #test_line_overlap()
+    #return 0
     # res = flat_vol_american_put_tree_greeks(100, 100, 0.03, 0.1, 1, 100)
     # print(res)
     S0 = 1.0
-    r = 0.05
+    r = 0.00
     T = 1
     K = 1.0
 
@@ -244,6 +258,7 @@ def main():
 
     # a1, b, rho, m, sigma, lam = 0.03, 0.01, -0.4, 0.2, 0.3, 0.1
     a1, b, rho, m, sigma, lam = 0.03, 0.02, -0.4, 0.2, 0.3, 0.1
+    a1, b, rho, m, sigma, lam = 0.03, 0.0, 0, 0.0, 0.01, 0.0
     #plot_price_surface((a1, b, rho, m, sigma, lam), r, K, T)
     plot_price_and_greeks((a1, b, rho, m, sigma, lam), r, K, T)
     return 0

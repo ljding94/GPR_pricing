@@ -206,6 +206,7 @@ def _refine_theta_PSOR(V, S, i_S0, S0, K, r, a1, b, rho, m, sigma, lam, payoff, 
     gamma0 = np.zeros(M + 1)
     for i in range(1, M):
         vol2 = local_vol2(S0, S[i], 0.0, r, a1, b, rho, m, sigma, lam)
+        print("vol2", vol2, "S[i]", S[i], "t", 0.0)
         alpha0[i] = 0.5 * (vol2 * S[i] ** 2 / dS**2 - r * S[i] / dS)
         beta0[i] = -(vol2 * S[i] ** 2 / dS**2 + r)
         gamma0[i] = 0.5 * (vol2 * S[i] ** 2 / dS**2 + r * S[i] / dS)
@@ -253,7 +254,7 @@ def make_grid_with_S0_on_node(S0, S_max, M):
     return S, dS, i0
 
 
-def price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, option_type, S_max_mult=5.0, M=500, N=500, omega=1.2, tol=1e-8, refine_theta=False, dt_theta=1e-5):  # SVI ignored here
+def price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, option_type, S_max_mult=5.0, M=500, N=500, omega=1.2, tol=1e-8, refine_theta=False, dt_theta=1e-5, all_Gamma=False):  # SVI ignored here
     # 1. Spatial grid in S
     # usage inside your solver
 
@@ -301,6 +302,7 @@ def price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, option_ty
         for i in range(1, M):
             Si = S[i]
             vol2 = local_vol2(S0, Si, t, r, a1, b, rho, m, sigma, lam)
+            #print("vol2", vol2, "Si", Si, "t", t)
             # vol2 = 0.03  # testing
             alpha[i] = 0.5 * (vol2 * Si**2 / dS**2 - r * Si / dS)
             beta[i] = -(vol2 * Si**2 / dS**2 + r)
@@ -370,6 +372,11 @@ def price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, option_ty
         else:
             theta_grid = np.full_like(V.real, np.nan)
         Theta = theta_grid[i_S0]
+
+    if all_Gamma:
+        all_gamma = np.full(all_V.shape, np.nan)
+        all_gamma[1:M,:] = (all_V[2:, :] - 2 * all_V[1:M, :] + all_V[:-2, :]) / dS**2
+        return price, delta, gamma, Theta, price_grid, delta_grid, gamma_grid, theta_grid, S, all_V, all_gamma
 
     return price, delta, gamma, Theta, price_grid, delta_grid, gamma_grid, theta_grid, S, all_V
 
@@ -563,26 +570,30 @@ def generate_american_put_data_set(folder, label, N_data, data_type="train"):
     print(f"Data saved to: {file_path}")
 
 
-def generate_american_put_precision_data(folder):
+def generate_american_put_precision_data(folder, param_index):
     a1, b, rho, m, sigma = 0.01, 0.15, 0.2, 0.2, 0.5
     r = 0.03
     lam = 0.5
     K = 1.0
     base_params = dict(a1=a1, b=b, rho=rho, m=m, sigma=sigma, r=r, lam=lam, K=K)
-    n = 20
+    n = 40
     param_range = {
         "a1": np.linspace(0.00, 0.02, n),
         "b": np.linspace(0.0, 0.3, n),
         "rho": np.linspace(-0.4, 0.8, n),
         "m": np.linspace(-0.2, 0.6, n),
         "sigma": np.linspace(0.00, 1.0, n),
-        "lam": np.linspace(0.00, 1.0, n),
         "r": np.linspace(0.00, 0.06, n),
-        "K": np.linspace(0.85, 1.15, n),
+        "lam": np.linspace(0.00, 1.0, n),
+        "K": np.linspace(0.8, 1.2, n),
     }
 
     # for each param, generate the values of price and greeks
-    for param_name, param_vals in param_range.items():
+    #for param_name, param_vals in param_range.items():
+
+    if 0< param_index < len(param_range):
+        param_name = list(param_range.keys())[param_index]
+        param_vals = param_range[param_name]
         print(f"Processing parameter: {param_name}")
         price_vals = np.zeros(n)
         delta_vals = np.zeros(n)

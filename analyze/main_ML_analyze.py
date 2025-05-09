@@ -10,38 +10,48 @@ def main():
     #folder = "../data/data_pool"
     #folder = "../data/20250430"
     folder = "../data/20250505_vs"
+    folder = "../data/20250505"
     # rand_max = 1000
     # filter by inK
 
-    data_type = "variance_swap"
-    #data_type = "american_put"
-    data = read_variance_swap_data(folder)
-    #data = read_american_put_data(folder, 10)
+    #product = "variance_swap"
+    #data_train = read_variance_swap_data(folder, "train")
+    #data_test = read_variance_swap_data(folder, "test")
+
+    product = "american_put"
+    data_train = read_american_put_data(folder, "train", 99)
+    data_test =  read_american_put_data(folder, "test", 18)
+    print("np.shape(data_train)", len(data_train[0]))
+    print("np.shape(data_test)", len(data_test[0]))
     #print("data", data[:10])
-    params, params_tex, params_name, target, target_tex, target_name = data
+    params, params_tex, params_name, targets, targets_tex, targets_name = data_train
     #targe_distribution(folder, data) # plot distrubution of target
     print(params[:5])
-    print(target[:5])
+    print(targets[:5])
 
     # Generate a random permutation of the indices
     # Set a seed for reproducibility
-    np.random.seed(42)
-    perm = np.random.permutation(params.shape[0])
+    #np.random.seed(42)
+    #perm = np.random.permutation(params.shape[0])
 
     # Shuffle params and target in the same order
-    params_shuffled = params[perm]
-    target_shuffled = target[perm]
+    #params_shuffled = params[perm]
+    #target_shuffled = target[perm]
 
     # If you want to update your data tuple:
-    data_shuffled = [params_shuffled, params_tex, params_name, target_shuffled, target_tex, target_name]
+    #data_shuffled = [params_shuffled, params_tex, params_name, target_shuffled, target_tex, target_name]
 
-    perc_train = 0.2
 
-    #GaussianProcess_optimization(folder, data_shuffled, perc_train, data_type)
+    perc_train = 1.0
+    GaussianProcess_optimization(folder, data_train, perc_train, product)
 
     #all_feature_names, all_feature_mean, all_feature_std, all_gp_per_feature = read_gp_and_params_stats(folder, "_all")
 
-    GaussianProcess_prediction(folder, data_shuffled, perc_train, data_type)
+
+    GaussianProcess_prediction(folder, data_test, product)
+
+
+    #plot_data_distribution(data_train[3], data_test[3])
 
 
 if __name__ == "__main__":

@@ -8,13 +8,13 @@ import sys
 def main(product="american_put", data_type="",label=0, N_data=10, folder="../data/data_pool"):
     # Generate the dataset
     if(data_type == "precision"):
-        generate_american_put_precision_data(folder)
+        generate_american_put_precision_data(folder, param_index=label)
         return 0
 
     if product.lower() == "american_put":
         generate_american_put_data_set(folder, label=label, N_data=N_data, data_type=data_type)
     elif product.lower() == "variance_swap":
-        generate_variance_swap_data(folder, N_data=N_data)
+        generate_variance_swap_data(folder, N_data=N_data, data_type=data_type)
 
 
 if __name__ == "__main__":
