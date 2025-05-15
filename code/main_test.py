@@ -3,7 +3,7 @@ from American_put import *
 import time
 from scipy.stats import norm
 import matplotlib.pyplot as plt
-
+from variance_swap import *
 
 def plot_price_surface(svi_params, r, K, T):
     a1, b, rho, m, sigma, lam = svi_params
@@ -242,7 +242,35 @@ def test_line_overlap():
     plt.plot(x, y+0.5,linestyle=(-4, (2, 3)), label="Line 5")
     plt.legend
     plt.show()
+
+
+def test_variance_swap_running_time():
+    folder = "../data/data_test"
+    start = time.time()
+    elapsed = 0
+    generate_variance_swap_data(folder, 2000, data_type="test")
+    elapsed = time.time() - start
+    print(f"Generated in {elapsed:.4f} seconds")
+
+def test_american_put_running_time():
+    folder = "../data/data_test"
+    #M,N= 1000, 1000
+    #M,N= 500, 500
+    M,N= 200, 200
+    n_prices = 0
+    start = time.time()
+    elapsed = 0
+    while elapsed < 300:
+        generate_american_put_data_set(folder, f"{M}x{N}", 1, data_type="test", M=M, N=N)
+        n_prices += 1
+        elapsed = time.time() - start
+        print(f"Generated {n_prices} prices for M={M}, N={N} in {elapsed:.4f} seconds")
+
+
 def main():
+    test_variance_swap_running_time()
+    #test_american_put_running_time()
+    return 0
     # S, P, lbd = build_binomial_tree(100, 5, 0.03, 5, (100, 0.1, -0.05), "Derman")
     # S, P, lbd = build_binomial_tree(100, 2, 0.03, 2, (0.1,0), "flat")
     #test_line_overlap()

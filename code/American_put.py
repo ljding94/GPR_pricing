@@ -164,7 +164,8 @@ def price_american_option_CN(S0, K, r, T, a1, b, rho, m, sigma, lam, option_type
     return price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all
 
 
-def _psor_step(alpha, beta, gamma, b, payoff, option_type, omega=1.2, tol=1e-8, maxit=2000):
+#def _psor_step(alpha, beta, gamma, b, payoff, option_type, omega=1.2, tol=1e-8, maxit=2000):
+def _psor_step(alpha, beta, gamma, b, payoff, option_type, omega=1.2, tol=1e-8, maxit=100):
     """
     Solve M V = b with LCP constraint V >= payoff via PSOR,
     where M has tridiagonal entries:
@@ -512,7 +513,7 @@ def generate_precision_american_put_data_set(folder):
     # TODO: generate dataset for given SVI params, for showing
 
 
-def generate_american_put_data_set(folder, label, N_data, data_type="train"):
+def generate_american_put_data_set(folder, label, N_data, data_type="train", M=1000, N=1000):
     # Parameters
     S0 = 1
 
@@ -549,7 +550,7 @@ def generate_american_put_data_set(folder, label, N_data, data_type="train"):
     for i in range(N_data):
         start_time = time.time()
         price, delta, gamma, theta, price_grid, delta_grid, gamma_grid, theta_grid, S, all_V = price_american_option_PSOR(
-            S0, K_vals[i], r_vals[i], T, a1_vals[i], b_vals[i], rho_vals[i], m_vals[i], sigma_vals[i], lam_vals[i], option_type="put", M=1000, N=1000
+            S0, K_vals[i], r_vals[i], T, a1_vals[i], b_vals[i], rho_vals[i], m_vals[i], sigma_vals[i], lam_vals[i], option_type="put", M=M, N=N
         )
         price_vals[i] = price
         delta_vals[i] = delta
@@ -591,7 +592,7 @@ def generate_american_put_precision_data(folder, param_index):
     # for each param, generate the values of price and greeks
     #for param_name, param_vals in param_range.items():
 
-    if 0< param_index < len(param_range):
+    if 0<= param_index < len(param_range):
         param_name = list(param_range.keys())[param_index]
         param_vals = param_range[param_name]
         print(f"Processing parameter: {param_name}")

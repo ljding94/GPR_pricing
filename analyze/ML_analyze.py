@@ -7,6 +7,7 @@ from scipy.optimize import curve_fit
 import pickle
 from scipy.spatial import cKDTree
 from itertools import product
+import time
 
 
 def plot_data_distribution(targets_train, targets_test):
@@ -159,14 +160,14 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, product_type
     targets = targets[: int(perc_train * len(targets))]
 
     # Grid for hyperparameter search (for LML contour)
-    grid_size = 30
+    grid_size = 20
 
     if product_type == "variance_swap":
         theta_per_target = {"Kvar": {"length_scale": np.linspace(1, 3, grid_size)}}
     elif product_type == "american_put":
         theta_per_target = {
-            "price": {"length_scale": np.linspace(2.5, 3.5, grid_size), "noise_level": np.logspace(-3, -2, grid_size)},
-            "delta": {"length_scale": np.linspace(2.0, 4.0, grid_size), "noise_level": np.logspace(-2, -1, grid_size)},
+            "price": {"length_scale": np.linspace(2.0, 3.0, grid_size), "noise_level": np.logspace(-4, -2, grid_size)},
+            "delta": {"length_scale": np.linspace(1.0, 3.0, grid_size), "noise_level": np.logspace(-2, -1, grid_size)},
             "gamma": {"length_scale": np.linspace(1, 3, grid_size), "noise_level": np.logspace(-1, 0, grid_size)},
             "theta": {"length_scale": np.linspace(1.5, 3.0, grid_size), "noise_level": np.logspace(-3 , -1, grid_size)},
         }
@@ -223,6 +224,7 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, product_type
             flat_LML[i_pts] = lml_val
             multi_idx = np.unravel_index(i_pts, shape)
             LML[multi_idx] = lml_val
+            print(f"Evaluating LML at {vals}: {lml_val:.3f}, {i_pts}/{len(mesh)}")
 
         ax = axs[idx]
         if len(grids) == 1:
@@ -230,14 +232,18 @@ def GaussianProcess_optimization(folder, data_shuffled, perc_train, product_type
             ax.set_xlabel(param_names[0])
         else:
             Xg, Yg = np.meshgrid(grids[0], grids[1], indexing="ij")
-            cs = ax.contour(Xg, Yg, LML, levels=500)
+            cs = ax.contour(Xg, Yg, LML, levels=100)
             fig.colorbar(cs, ax=ax, label="LML")
             ax.set_yscale("log")
             ax.set_xlabel(param_names[0])
             ax.set_ylabel(param_names[1])
 
         # --- 5) full GP optimization ---
-        gp_opt = GaussianProcessRegressor(kernel=auto_kernel(init_dict, bounds_dict), alpha=1e-6, n_restarts_optimizer=10)
+        if target_name == "gamma":
+            # gamma is tooooo slow!
+            gp_opt = GaussianProcessRegressor(kernel=auto_kernel(init_dict, bounds_dict), alpha=1e-5, n_restarts_optimizer=2)
+        else:
+            gp_opt = GaussianProcessRegressor(kernel=auto_kernel(init_dict, bounds_dict), alpha=1e-6, n_restarts_optimizer=5)
         gp_opt.fit(params_norm, targets_norm[:, idx])
         theta_opt = np.exp(gp_opt.kernel_.theta)
         lml_opt = gp_opt.log_marginal_likelihood(gp_opt.kernel_.theta)/params_norm.shape[0]
@@ -309,7 +315,10 @@ def GaussianProcess_prediction(folder, data, product_type):
         print("Kernel parameters:", gp_theta)
         print("Log-marginal-likelihood: %.3f" % gp.log_marginal_likelihood(gp.kernel_.theta))
 
+        start_time = time.perf_counter()
         Y_predict, Y_predict_err = gp.predict(params_test, return_std=True)
+        elapsed_time = time.perf_counter() - start_time
+        print(f"gp.predict time: {elapsed_time:.6f} seconds")
         # print("np.shape(test_data[:, 0])", np.shape(test_data[:, 0]))
         print("np.shape(Y_predict)", np.shape(Y_predict))
 

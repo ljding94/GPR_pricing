@@ -244,12 +244,14 @@ def get_sensitivity_data(folder, param):
 
 def plot_american_params_sensitivity(tex_lw=240.71031, ppi=72):
 
-    folder = "../data/20250505"
+    #folder = "../data/20250505"
+    #folder = "../data/20250509"
+    folder = "../data/20250513"
     fig, axs = plt.subplots(4, 8, figsize=(tex_lw / ppi * 2.0, tex_lw / ppi * 1), dpi=ppi, sharex="col", sharey="row")
 
     params = ["a1", "b", "rho", "m", "sigma", "lam", "K", "r"]
     texs = [r"$a'$", r"$b$", r"$\rho$", r"$m$", r"$\sigma$", r"$\lambda$", r"$K$", r"$r$"]
-    mlocator = [0.01, 0.2, 0.4, 0.4, 0.5, 0.5, 0.1, 0.05]
+    mlocator = [0.01, 0.2, 0.4, 0.4, 0.5, 0.5, 0.2, 0.05]
     ymlocator = [0.1, 0.5, 5, 0.02]
     for i in range(len(params)):
         par, price, delta, gamma, theta = get_sensitivity_data(folder, params[i])
@@ -294,7 +296,7 @@ def plot_american_params_sensitivity(tex_lw=240.71031, ppi=72):
 
 
 def plot_american_put_LML(tex_lw=240.71031, ppi=72):
-    folder = "../data/20250505"
+    folder = "../data/20250506"
 
     fig = plt.figure(figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 1), dpi=ppi)
     ax1 = plt.subplot(221)
@@ -307,8 +309,8 @@ def plot_american_put_LML(tex_lw=240.71031, ppi=72):
     texs = [r"$V$", r"$\Delta$", r"$\Gamma$", r"$\Theta$"]
     grid_size = 2
     ticks = {
-        "price": {"length_scale": np.linspace(2.5, 3.5, grid_size), "noise_level": np.logspace(-3, -2, grid_size)},
-        "delta": {"length_scale": np.linspace(2.0, 4.0, grid_size), "noise_level": np.logspace(-2, -1, grid_size)},
+        "price": {"length_scale": np.linspace(2, 3, grid_size), "noise_level": np.logspace(-3, -2, grid_size)},
+        "delta": {"length_scale": np.linspace(1.0, 3.0, grid_size), "noise_level": np.logspace(-2, -1, grid_size)},
         "gamma": {"length_scale": np.linspace(1, 3, grid_size), "noise_level": np.logspace(-1, 0, grid_size)},
         "theta": {"length_scale": np.linspace(1.5, 3.0, grid_size), "noise_level": np.logspace(-3, -1, grid_size)},
     }
@@ -355,7 +357,8 @@ def plot_american_put_LML(tex_lw=240.71031, ppi=72):
 
 
 def plot_american_put_GPR_fitting(tex_lw=240.71031, ppi=72):
-    folder = "../data/20250505"
+    #folder = "../data/20250505"
+    folder = "../data/20250506"
     fig = plt.figure(figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 0.8), dpi=ppi)
     ax1 = plt.subplot(221)
     ax2 = plt.subplot(222)

@@ -26,10 +26,10 @@ def main():
 
     # heat map of V(S,t) and Gamma(S, t)
     # then V(S) and Gamma (S) for different r, to show discontinuity is from early exercise driven by interest rate
-    plot_american_price_solution_per_r()
+    #plot_american_price_solution_per_r()
 
     # V, delta, gamma, theta versus 6 SVI params + K and r ( need precision run)
-    #plot_american_params_sensitivity()
+    plot_american_params_sensitivity()
 
     # LML
     #plot_american_put_LML()
