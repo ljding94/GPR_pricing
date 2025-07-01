@@ -9,6 +9,222 @@ from scipy.spatial import cKDTree
 from itertools import product
 import time
 
+import torch
+import gpytorch
+###############################################################################
+# Helper utilities
+###############################################################################
+
+def _get_device():
+    """Return CUDA device if available, otherwise CPU."""
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def _select_inducing_points(X: torch.Tensor, m: int = 512, seed: int = 0):
+    """Return *m* inducing points chosen uniformly at random from *X*."""
+    if X.size(0) <= m:
+        return X.clone()
+    g = torch.Generator(device=X.device).manual_seed(seed)
+    idx = torch.randperm(X.size(0), generator=g, device=X.device)[:m]
+    return X[idx]
+
+
+###############################################################################
+# GP model definition (sparse variational RBF kernel)
+###############################################################################
+
+class SparseGPRegressionModel(gpytorch.models.ApproximateGP):
+    """Single‑output sparse GP with an RBF kernel."""
+
+    def __init__(self, inducing_points: torch.Tensor):
+        variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
+            inducing_points.size(0)
+        )
+        variational_strategy = gpytorch.variational.VariationalStrategy(
+            self,
+            inducing_points,
+            variational_distribution,
+            learn_inducing_locations=True,
+        )
+        super().__init__(variational_strategy)
+
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = gpytorch.kernels.ScaleKernel(
+            gpytorch.kernels.RBFKernel()
+        )
+
+    def forward(self, x):
+        mean_x = self.mean_module(x)
+        covar_x = self.covar_module(x)
+        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
+
+###############################################################################
+# Training interface equivalent to GaussianProcess_optimization
+###############################################################################
+
+def GPtorch_optimization(folder: str, data_shuffled, perc_train: float, product_type: str,
+                          num_inducing: int = 512, num_iters: int = 1000, lr: float = 0.01):
+    """Train one sparse GP per output using GPyTorch and save state dicts.
+
+    The API matches *GaussianProcess_optimization* (same args, same side‑effects):
+    – normalisation stats written to *_params_avg_std.txt* and *_targets_avg_std.txt*
+    – a model checkpoint written per target as *{product_type}_gptorch_{target}.pt* in *folder*.
+    """
+
+    # Unpack data and take training split --------------------------------------------------
+    params, params_tex, params_name, targets, targets_tex, targets_name = data_shuffled
+    n_train = int(len(params) * perc_train)
+    X_train_np = params[:n_train]
+    Y_train_np = targets[:n_train]
+
+    # --------------------------------------------------------------------- normalisation
+    params_mean, params_std = X_train_np.mean(0), X_train_np.std(0)
+    targets_mean, targets_std = Y_train_np.mean(0), Y_train_np.std(0)
+
+    np.savetxt(
+        os.path.join(folder, f"{product_type}_params_avg_std.txt"),
+        np.column_stack((params_name, params_mean, params_std)),
+        delimiter=",",
+        header="params_name,params_mean,params_std",
+        comments="",
+        fmt="%s",
+    )
+    np.savetxt(
+        os.path.join(folder, f"{product_type}_targets_avg_std.txt"),
+        np.column_stack((targets_name, targets_mean, targets_std)),
+        delimiter=",",
+        header="target_name,target_mean,target_std",
+        comments="",
+        fmt="%s",
+    )
+
+    # Convert to torch ---------------------------------------------------------------
+    device = _get_device()
+    X_train = torch.tensor((X_train_np - params_mean) / params_std, dtype=torch.float32, device=device)
+
+    # one GP per output --------------------------------------------------------------
+    for out_idx, tname in enumerate(targets_name):
+        print(f"\n[GPyTorch] Training target '{tname}' …")
+        y_train = torch.tensor(
+            (Y_train_np[:, out_idx] - targets_mean[out_idx]) / targets_std[out_idx],
+            dtype=torch.float32,
+            device=device,
+        )
+
+        inducing = _select_inducing_points(X_train, m=num_inducing)
+        model = SparseGPRegressionModel(inducing).to(device)
+        likelihood = gpytorch.likelihoods.GaussianLikelihood().to(device)
+
+        model.train(); likelihood.train()
+        optimizer = torch.optim.Adam([{'params': model.parameters()}, {'params': likelihood.parameters()}], lr=lr)
+        mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=X_train.size(0))
+
+        for it in range(1, num_iters + 1):
+            optimizer.zero_grad()
+            loss = -mll(model(X_train), y_train)
+            loss.backward()
+            optimizer.step()
+            if it % max(1, num_iters // 10) == 0 or it == 1:
+                print(f"  iter {it:4d}/{num_iters}   loss = {loss.item():.4f}")
+
+        # save checkpoint ------------------------------------------------------------
+        ckpt = {
+            'model_state_dict': model.state_dict(),
+            'likelihood_state_dict': likelihood.state_dict(),
+            'inducing_points': inducing.cpu(),
+        }
+        torch.save(ckpt, os.path.join(folder, f"{product_type}_gptorch_{tname}.pt"))
+        print(f"✔ saved '{product_type}_gptorch_{tname}.pt' ({num_inducing} inducing pts)")
+
+###############################################################################
+# Prediction interface equivalent to GaussianProcess_prediction
+###############################################################################
+
+def GPtorch_prediction(folder: str, data, product_type: str,
+                       batch_size: int = 4096):
+    """Load checkpoints from *GPtorch_optimization* and make predictions.
+
+    Saves scatter plots and prediction .txt files exactly like *GaussianProcess_prediction*.
+    """
+
+    # Unpack & read normalisation stats -------------------------------------------
+    params, params_tex, params_name, target, target_tex, target_name = data
+    params_stats = np.genfromtxt(
+        os.path.join(folder, f"{product_type}_params_avg_std.txt"),
+        delimiter=",",
+        skip_header=1,
+        usecols=(1, 2),
+    )
+    target_stats = np.genfromtxt(
+        os.path.join(folder, f"{product_type}_targets_avg_std.txt"),
+        delimiter=",",
+        skip_header=1,
+        usecols=(1, 2),
+    )
+    params_mean, params_std = params_stats[:, 0], params_stats[:, 1]
+    target_mean, target_std = target_stats[:, 0], target_stats[:, 1]
+
+    # Normalise test inputs ---------------------------------------------------------
+    X_test_np = (params - params_mean) / params_std
+    X_test = torch.tensor(X_test_np, dtype=torch.float32, device=_get_device())
+
+    plt.figure(figsize=(6 * len(target_name), 6))
+    for out_idx, tname in enumerate(target_name):
+        # load checkpoint ----------------------------------------------------------
+        ckpt_path = os.path.join(folder, f"{product_type}_gptorch_{tname}.pt")
+        if not os.path.isfile(ckpt_path):
+            print(f"⚠ checkpoint for '{tname}' not found – skipping")
+            continue
+        ckpt = torch.load(ckpt_path, map_location=_get_device())
+        inducing = ckpt['inducing_points'].to(_get_device())
+
+        model = SparseGPRegressionModel(inducing).to(_get_device())
+        likelihood = gpytorch.likelihoods.GaussianLikelihood().to(_get_device())
+        model.load_state_dict(ckpt['model_state_dict'])
+        likelihood.load_state_dict(ckpt['likelihood_state_dict'])
+
+        model.eval(); likelihood.eval()
+
+        with torch.no_grad(), gpytorch.settings.fast_pred_var():
+            preds = []
+            vars_ = []
+            for i in range(0, X_test.size(0), batch_size):
+                out = likelihood(model(X_test[i : i + batch_size]))
+                preds.append(out.mean)
+                vars_.append(out.variance)
+            mean_pred = torch.cat(preds).cpu().numpy()
+            var_pred = torch.cat(vars_).cpu().numpy()
+            std_pred = np.sqrt(var_pred)
+
+        # denormalise --------------------------------------------------------------
+        mean_pred = mean_pred * target_std[out_idx] + target_mean[out_idx]
+        std_pred = std_pred * target_std[out_idx]
+        Y_true = target[:, out_idx]
+
+        # scatter plot -------------------------------------------------------------
+        ax = plt.subplot(1, len(target_name), out_idx + 1)
+        ax.scatter(Y_true, mean_pred, s=5, facecolors='none', edgecolors='black')
+        ax.plot(Y_true, Y_true, '--')
+        minv = min(Y_true.min(), (mean_pred - std_pred).min())
+        maxv = max(Y_true.max(), (mean_pred + std_pred).max())
+        ax.set_xlim(minv, maxv); ax.set_ylim(minv, maxv)
+        ax.set_xlabel(target_tex[out_idx]); ax.set_ylabel(f"{target_tex[out_idx]} Prediction")
+
+        # save txt -----------------------------------------------------------------
+        np.savetxt(
+            os.path.join(folder, f"{product_type}_{tname}_prediction.txt"),
+            np.column_stack((Y_true, mean_pred, std_pred)),
+            delimiter=",",
+            header=",".join([tname, "ML predicted", "ML predicted uncertainty"]),
+            comments="",
+        )
+        print(f"✔ saved predictions for '{tname}'")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(folder, f"{product_type}_prediction.png"), dpi=300)
+    plt.close()
+
+# previous scikit learn code
 
 def plot_data_distribution(targets_train, targets_test):
     print(targets_test)

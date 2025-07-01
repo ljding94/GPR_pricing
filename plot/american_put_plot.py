@@ -76,14 +76,15 @@ def plot_american_price_solution(tex_lw=240.71031, ppi=72):
         ax.text(0.8, 0.25, annos[i], transform=ax.transAxes, fontsize=9)
 
     plt.tight_layout(pad=0.2)
-    plt.savefig("./figures/american_price_solution.png", dpi=ppi)
+    plt.savefig("./figures/american_price_solution.png", dpi=300)
     plt.savefig("./figures/american_price_solution.pdf", format="pdf")
     plt.show()
     plt.close()
 
 
-def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
+def plot_american_price_solution_per_r_old(tex_lw=240.71031, ppi=72):
     fig = plt.figure(figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 1.4), dpi=ppi)
+
 
     ax11 = plt.subplot(321)
     ax12 = plt.subplot(322, sharex=ax11, sharey=ax11)
@@ -105,9 +106,9 @@ def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
     ni, nf = 140, 280
     ntf = -50
 
-    #Mrun, Nrun = 200, 100
-    #ni,nf = 28, 56
-    #ntf = -10
+    Mrun, Nrun = 200, 100
+    ni,nf = 28, 56
+    ntf = -10
 
     Vmin, Vmax = 0.0, 0.3
     Gmin, Gmax = 0.0, 9
@@ -124,6 +125,8 @@ def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
     S_sub = S[ni:nf]
     t_vals = np.linspace(0, T, all_V.shape[1])
     S_mesh, t_mesh = np.meshgrid(S_sub, t_vals, indexing="ij")
+
+
     pcm11 = ax11.pcolormesh(S_mesh, t_mesh, all_V[ni:nf, :], shading="auto", cmap="rainbow_r", vmin=Vmin, vmax=Vmax, rasterized=True)
     #ax11.set_title(r"$V$", fontsize=9, pad=0)
     cbar11 = plt.colorbar(pcm11, ax=ax11, fraction=0.04, pad=0.02, orientation="horizontal",location="top")
@@ -132,7 +135,6 @@ def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
     cbar11.set_label(r"$V$", fontsize=9, labelpad=0)
     cbar11.ax.tick_params(which="both", direction="in", top="on", right="on", labelsize=7, pad=0)
     cbar11.ax.set_xticks([Vmin, 0.5*Vmax, Vmax])
-
 
     pcm12 = ax12.pcolormesh(S_mesh[:,:ntf], t_mesh[:,:ntf], all_Gamma[ni:nf, :ntf], shading="auto", cmap="rainbow_r", vmin=Gmin, vmax=Gmax, rasterized=True)
     cbar12 = plt.colorbar(pcm12, ax=ax12, fraction=0.04, pad=0.02, orientation="horizontal",location="top")
@@ -156,7 +158,7 @@ def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
     t_vals = np.linspace(0, T, all_V.shape[1])
     S_mesh, t_mesh = np.meshgrid(S_sub, t_vals, indexing="ij")
 
-    pcm21 = ax21.pcolormesh(S_mesh, t_mesh, all_V[ni:nf, :], shading="auto", cmap="rainbow_r", vmin=Vmin, vmax=Vmax, rasterized=True)
+    #pcm21 = ax21.pcolormesh(S_mesh, t_mesh, all_V[ni:nf, :], shading="auto", cmap="rainbow_r", vmin=Vmin, vmax=Vmax, rasterized=True)
     #ax21.set_title(r"$V$", fontsize=9, pad=0)
     #cbar21 = plt.colorbar(pcm21, ax=ax21, fraction=0.04, pad=0.02, orientation="horizontal",location="top")
     #cbar21.ax.xaxis.set_ticks_position("top")
@@ -228,12 +230,156 @@ def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
     print("Gmax", Gmax)
 
     plt.tight_layout(pad=0.2)
+    plt.savefig("./figures/american_price_solution_per_r_old.png", dpi=300)
+    plt.savefig("./figures/american_price_solution_per_r_old.pdf", format="pdf", dpi=300)
+    plt.show()
+    plt.close()
+
+def plot_american_price_solution_per_r(tex_lw=240.71031, ppi=72):
+    fig = plt.figure(figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 1.0), dpi=ppi)
+
+    ax11 = plt.subplot(221)
+    ax12 = plt.subplot(222, sharex=ax11)
+    ax21 = plt.subplot(223, sharex=ax11)
+    ax22 = plt.subplot(224, sharex=ax11, sharey=ax21)
+
+
+    a1, b, rho, m, sigma = 0.03, 0.0, 0.0, 0.001, 0.0
+
+    K = 1.0
+    T = 1.0
+    lam = 0.0
+    S0 = 1
+
+
+    Mrun, Nrun = 1000, 500
+    ni, nf = 140, 280
+    ntf = -50
+
+    #Mrun, Nrun = 200, 100
+    #ni,nf = 28, 56
+    #ntf = -10
+
+    Vmin, Vmax = 0.0, 0.3
+    Gmin, Gmax = 0.0, 9
+
+    rcolormap = plt.get_cmap("rainbow")
+    rcolors = rcolormap(np.linspace(0, 1, 3))
+
+    r = 0.10
+    price, delta, gamma, theta, price_grid, delta_grid, gamma_grid, theta_grid, S, all_V, all_Gamma = price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, M= Mrun, N=Nrun, option_type="put", refine_theta=False, all_Gamma=True)
+    #Vmax = np.max(all_V[ni:nf, :])
+    #Gmax = np.max(all_Gamma[ni:nf, :ntf])
+
+    S_sub = S[ni:nf]
+    t_vals = np.linspace(0, T, all_V.shape[1])
+    S_mesh, t_mesh = np.meshgrid(S_sub, t_vals, indexing="ij")
+
+    ax11.plot(S[ni:nf], price_grid[ni:nf], label=f"r={r:.2f}", lw=1, color=rcolors[0])
+    ax12.plot(S[ni:nf], gamma_grid[ni:nf], label=f"r={r:.2f}", lw=1, color=rcolors[0])
+
+    pcm21 = ax21.pcolormesh(S_mesh[:,:ntf], t_mesh[:,:ntf], all_Gamma[ni:nf, :ntf], shading="auto", cmap="rainbow_r", vmin=Gmin, vmax=Gmax, rasterized=True)
+    #cbar21 = plt.colorbar(pcm21, ax=ax21, fraction=0.04, pad=0.02, orientation="horizontal",location="top")
+    #cbar21 = plt.colorbar(pcm21, ax=ax21, fraction=0.04, pad=0.02, orientation="horizontal",location="top")
+    #cbar21.ax.xaxis.set_ticks_position("top")
+    #cbar21.ax.xaxis.set_label_position("top")
+    #cbar21.set_label(r"$\Gamma$", fontsize=9, labelpad=0)
+    #cbar21.ax.tick_params(which="both", direction="in", top="on", right="on", labelsize=7, pad=0)
+    #cbar21.ax.set_xticks([Gmin, 0.5*Gmax, Gmax])
+
+
+    r = 0.05
+    price, delta, gamma, theta, price_grid, delta_grid, gamma_grid, theta_grid, S, all_V, all_Gamma = price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, M= Mrun, N=Nrun, option_type="put", refine_theta=False, all_Gamma=True)
+    ax11.plot(S[ni:nf], price_grid[ni:nf], label=f"r={r:.2f}", lw=1, color=rcolors[1])
+    ax12.plot(S[ni:nf], gamma_grid[ni:nf], label=f"r={r:.2f}", lw=1, color=rcolors[1])
+
+    r = 0.00
+    price, delta, gamma, theta, price_grid, delta_grid, gamma_grid, theta_grid, S, all_V, all_Gamma = price_american_option_PSOR(S0, K, r, T, a1, b, rho, m, sigma, lam, M= Mrun, N=Nrun, option_type="put", refine_theta=False, all_Gamma=True)
+    S_sub = S[ni:nf]
+    t_vals = np.linspace(0, T, all_V.shape[1])
+    S_mesh, t_mesh = np.meshgrid(S_sub, t_vals, indexing="ij")
+
+    ax11.plot(S[ni:nf], price_grid[ni:nf], label=f"r={r:.2f}", lw=1, color=rcolors[2])
+    ax12.plot(S[ni:nf], gamma_grid[ni:nf], label=f"r={r:.2f}", lw=1, color=rcolors[2])
+
+    pcm22 = ax22.pcolormesh(S_mesh[:,:ntf], t_mesh[:,:ntf], all_Gamma[ni:nf, :ntf], shading="auto", cmap="rainbow_r", vmin=Gmin, vmax=Gmax, rasterized=True)
+    #ax22.set_title(r"$\Gamma$", fontsize=9, pad=0)
+    #cbar22 = plt.colorbar(pcm22, ax=ax22, fraction=0.03, pad=0.02, orientation="horizontal",location="top")
+    cbar22 = plt.colorbar(pcm22, ax=ax22, fraction=0.03, pad=0.02, orientation="vertical",location="right")
+    cbar22.ax.xaxis.set_ticks_position("top")
+    cbar22.ax.xaxis.set_label_position("top")
+    #cbar22.set_label(r"$\Gamma$", fontsize=9, labelpad=0)
+    cbar22.ax.set_title(r"$\Gamma$", fontsize=9, pad=4)
+    cbar22.ax.tick_params(labelsize=7, direction="in")
+
+    S_bs = S[ni:nf]
+    bs_price_put, bs_delta_put, bs_gamma_put, bs_theta_put = bs_price(S_bs, K, T, r, np.sqrt(a1), type="put")
+    ax11.plot(S_bs, bs_price_put, label="E.P. r=0", linestyle=(0, (2, 4)), lw=1, color="black")
+    ax12.plot(S_bs, bs_gamma_put, label="E.P. r=0", linestyle=(0, (2, 4)), lw=1, color="black")
+
+    '''
+    ax11.tick_params(which="both", direction="in", top="on", right="on", labelbottom=False, labelleft=True, labelsize=7, pad=2)
+    ax11.xaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax11.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax11.yaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax11.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    '''
+
+    #ax21.tick_params(which="both", direction="in", top="on", right="on", labelbottom=False, labelleft=True, labelsize=7, pad=2)
+
+    ax11.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=True, labelsize=7, pad=2)
+    ax11.yaxis.set_major_locator(plt.MultipleLocator(0.1))
+    ax11.yaxis.set_minor_locator(plt.MultipleLocator(0.05))
+    ax11.set_ylabel(r"$V$", fontsize=9, labelpad=0)
+    ax11.set_xlabel(r"$S$", fontsize=9, labelpad=0)
+    ax11.legend(ncol=1, columnspacing=0.5, handlelength=1.0, handletextpad=0.2, labelspacing=0.2, frameon=False, fontsize=9)
+
+    #ax12.tick_params(which="both", direction="in", top="on", right="on", labelbottom=False, labelleft=False, labelsize=7, pad=2)
+    ax12.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelright=True, labelleft=False, labelsize=7, pad=2)
+    ax12.yaxis.set_major_locator(plt.MultipleLocator(2))
+    ax12.yaxis.set_minor_locator(plt.MultipleLocator(1))
+    ax12.yaxis.set_label_position("right")
+    ax12.set_ylabel(r"$\Gamma$", fontsize=9, labelpad=2)
+    ax12.set_xlabel(r"$S$", fontsize=9, labelpad=0)
+
+    ax21.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=True, labelsize=7, pad=2)
+    ax21.yaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax21.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax21.xaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax21.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+
+    ax21.set_xlabel(r"$S$", fontsize=9, labelpad=0)
+    ax21.set_ylabel(r"$t$", fontsize=9, labelpad=0)
+
+
+    ax22.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=False, labelsize=7, pad=2)
+    ax22.yaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax22.yaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax21.xaxis.set_major_locator(plt.MultipleLocator(0.2))
+    ax21.xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    ax22.set_xlabel(r"$S$", fontsize=9, labelpad=0)
+
+
+    ax12.legend(ncol=1, columnspacing=0.5, handlelength=1.0, handletextpad=0.2, labelspacing=0.2, frameon=False, fontsize=9)
+
+    #ax11.text(0.5,0.4, r"$r=0.10$", transform=ax11.transAxes, fontsize=9)
+    ax21.text(0.5,0.4, r"$r=0.10$", transform=ax21.transAxes, fontsize=9)
+    #ax21.text(0.5,0.4, r"$r=0.00$", transform=ax21.transAxes, fontsize=9)
+    ax22.text(0.5,0.4, r"$r=0.00$", transform=ax22.transAxes, fontsize=9)
+
+    # annotations
+    annos = [r"$(a)$", r"$(b)$", r"$(c)$", r"$(d)$"]
+    for i, ax in enumerate([ax11, ax12, ax21, ax22]):
+        ax.text(0.8, 0.2, annos[i], transform=ax.transAxes, fontsize=9)
+
+    print("Vmax", Vmax)
+    print("Gmax", Gmax)
+
+    plt.tight_layout(pad=0.2)
     plt.savefig("./figures/american_price_solution_per_r.png", dpi=300)
     plt.savefig("./figures/american_price_solution_per_r.pdf", format="pdf", dpi=300)
     plt.show()
     plt.close()
-
-
 
 
 def get_sensitivity_data(folder, param):
@@ -289,8 +435,59 @@ def plot_american_params_sensitivity(tex_lw=240.71031, ppi=72):
             axs[j, i].text(0.3, 0.7, r"$($" + alphabet[i] + number[j] + r"$)$", transform=axs[j, i].transAxes, fontsize=9)
 
     plt.tight_layout(pad=0.2)
-    plt.savefig("./figures/american_params_sensitivity_price.png", dpi=ppi)
+    plt.savefig("./figures/american_params_sensitivity_price.png", dpi=300)
     plt.savefig("./figures/american_params_sensitivity_price.pdf", format="pdf")
+    plt.show()
+    plt.close()
+
+def plot_american_params_sensitivity_K(tex_lw=240.71031, ppi=72):
+
+    #folder = "../data/20250505"
+    #folder = "../data/20250509"
+    folder = "../data/20250513"
+    fig, axs = plt.subplots(2, 2, figsize=(tex_lw / ppi * 1.0, tex_lw / ppi * 0.8), dpi=ppi, sharex=True)
+    axs = axs.flatten()
+
+    mlocator = 0.2
+    ymlocator = [0.1, 0.3, 2, 0.01]
+    par, price, delta, gamma, theta = get_sensitivity_data(folder, "K")
+    axs[0].plot(par, price, lw=1, color="royalblue")
+    axs[1].plot(par, delta, lw=1, color="royalblue")
+    axs[2].plot(par, gamma, lw=1, color="tomato")
+    axs[3].plot(par, theta, lw=1, color="royalblue")
+
+    for j in range(4):
+        axs[j].tick_params(which="both", direction="in", top="on", right="on", labelbottom=False, labelleft=False, labelsize=7, pad=2)
+        axs[j].yaxis.set_major_locator(plt.MultipleLocator(ymlocator[j]))
+        axs[j].yaxis.set_minor_locator(plt.MultipleLocator(ymlocator[j] * 0.5))
+
+
+    axs[2].xaxis.set_major_locator(plt.MultipleLocator(0.2))
+    axs[2].xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    axs[2].set_xlabel(r"$K$", fontsize=9, labelpad=0)
+    axs[2].tick_params(labelbottom=True)
+    axs[3].xaxis.set_major_locator(plt.MultipleLocator(0.2))
+    axs[3].xaxis.set_minor_locator(plt.MultipleLocator(0.1))
+    axs[3].set_xlabel(r"$K$", fontsize=9, labelpad=0)
+    axs[3].tick_params(labelbottom=True)
+
+    axs[0].set_ylabel(r"$V$", fontsize=9, labelpad=0)
+    axs[0].tick_params(labelleft=True)
+    axs[1].set_ylabel(r"$\Delta$", fontsize=9, labelpad=0)
+    axs[1].tick_params(labelleft=True)
+    axs[2].set_ylabel(r"$\Gamma$", fontsize=9, labelpad=0)
+    axs[2].tick_params(labelleft=True)
+    axs[3].set_ylabel(r"$\Theta$", fontsize=9, labelpad=0)
+    axs[3].tick_params(labelleft=True)
+
+    # annotations
+    annos = [r"$(a)$", r"$(b)$", r"$(c)$", r"$(d)$"]
+    for j in range(4):
+        axs[j].text(0.82, 0.15, annos[j], transform=axs[j].transAxes, fontsize=9)
+
+    plt.tight_layout(pad=0.2)
+    plt.savefig("./figures/american_params_sensitivity_price_K.png", dpi=300)
+    plt.savefig("./figures/american_params_sensitivity_price_K.pdf", format="pdf")
     plt.show()
     plt.close()
 
@@ -350,7 +547,7 @@ def plot_american_put_LML(tex_lw=240.71031, ppi=72):
         ax.text(0.7, 0.2, annos[i], transform=ax.transAxes, fontsize=9)
 
     plt.tight_layout(pad=0.2)
-    plt.savefig("./figures/american_put_LML.png", dpi=ppi)
+    plt.savefig("./figures/american_put_LML.png", dpi=300)
     plt.savefig("./figures/american_put_LML.pdf", format="pdf")
     plt.show()
     plt.close()
@@ -372,7 +569,7 @@ def plot_american_put_GPR_fitting(tex_lw=240.71031, ppi=72):
     for i in range(len(targets)):
         data = np.loadtxt(f"{folder}/american_put_{targets[i]}_prediction.txt", skiprows=1, unpack=True, delimiter=",")
         Y, Y_predict, Y_predict_err = data
-        axs[i].scatter(Y, Y_predict,marker=".", s=2, color="royalblue", facecolor="none",edgecolor="black")
+        axs[i].scatter(Y, Y_predict,marker=".", s=1, facecolor="none",edgecolor="gray")
         scale = np.mean(np.abs(Y))  # or np.median(np.abs(Y)), or (Y.max()-Y.min())
         Err = 100 * np.abs(Y_predict - Y) / scale
         #Err = 100*np.abs(Y_predict - Y)/np.maximum(np.abs(Y), np.abs(Y_predict))
@@ -397,7 +594,7 @@ def plot_american_put_GPR_fitting(tex_lw=240.71031, ppi=72):
         ax.text(0.75, 0.1, annos[i], transform=ax.transAxes, fontsize=9)
     plt.tight_layout(pad=0)
     plt.subplots_adjust(left=0.12, bottom=0.12)
-    plt.savefig("./figures/american_put_GPR_fitting.png", dpi=ppi)
+    plt.savefig("./figures/american_put_GPR_fitting.png", dpi=300)
     plt.savefig("./figures/american_put_GPR_fitting.pdf", format="pdf")
     plt.show()
     plt.close()

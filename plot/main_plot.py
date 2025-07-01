@@ -10,6 +10,7 @@ def main():
 
     #plot_illustrative_vol_surface_local_vol()
 
+    try_to_fit_SVI_surface()
 
     # variance swap
 
@@ -29,7 +30,8 @@ def main():
     #plot_american_price_solution_per_r()
 
     # V, delta, gamma, theta versus 6 SVI params + K and r ( need precision run)
-    plot_american_params_sensitivity()
+    #plot_american_params_sensitivity()
+    #plot_american_params_sensitivity_K()
 
     # LML
     #plot_american_put_LML()

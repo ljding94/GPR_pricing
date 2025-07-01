@@ -9,7 +9,8 @@ from variance_swap import variace_swap_strike
 
 def plot_Kvar_versus_SVI_params(tex_lw=240.71031, ppi=72):
     # baseline SVI parameters
-    a1, b, rho, m, sigma = 0.01, 0.15, 0.2, 0.2, 0.5
+    #a1, b, rho, m, sigma = 0.01, 0.15, 0.2, 0.2, 0.5
+    a1, b, rho, m, sigma = 0.01, 0.15, -0.1, 0.2, 0.2
     r = 0.03
 
     # create figure and subplots/
@@ -52,8 +53,8 @@ def plot_Kvar_versus_SVI_params(tex_lw=240.71031, ppi=72):
         ax.tick_params(which="both", direction="in", top="on", right="on", labelbottom=True, labelleft=False, labelsize=7, pad=1)
         ax.xaxis.set_major_locator(plt.MultipleLocator(mlocator))
         ax.xaxis.set_minor_locator(plt.MultipleLocator(mlocator * 0.5))
-    ax1.yaxis.set_major_locator(plt.MultipleLocator(0.01))
-    ax1.yaxis.set_minor_locator(plt.MultipleLocator(0.005))
+    ax1.yaxis.set_major_locator(plt.MultipleLocator(0.02))
+    ax1.yaxis.set_minor_locator(plt.MultipleLocator(0.01))
     ax1.tick_params(labelleft=True)
     ax4.tick_params(labelleft=True)
     ax1.set_ylabel(r"$K_{var}$", fontsize=9, labelpad=0)
@@ -67,7 +68,7 @@ def plot_Kvar_versus_SVI_params(tex_lw=240.71031, ppi=72):
         ax.text(x, y, annos[i], transform=ax.transAxes, fontsize=9)
 
     plt.tight_layout(pad=0.2)
-    plt.savefig("./figures/Kvar_vs_params.png", dpi=ppi)
+    plt.savefig("./figures/Kvar_vs_params.png", dpi=300)
     plt.savefig("./figures/Kvar_vs_params.pdf", format="pdf")
     plt.show()
     plt.close()
@@ -106,13 +107,13 @@ def plot_variance_swap_GPR_fitting(tex_lw=240.71031, ppi=72):
     ax1.xaxis.set_minor_locator(plt.MultipleLocator(0.5))
     ax1.yaxis.set_major_locator(plt.MultipleLocator(5))
     ax1.yaxis.set_minor_locator(plt.MultipleLocator(2.5))
-    ax1.text(0.2, 0.6, r"$K_{var}$", fontsize=9, transform=ax1.transAxes)
+    #ax1.text(0.2, 0.6, r"$K_{var}$", fontsize=9, transform=ax1.transAxes)
 
     # get prediction data
     data = np.loadtxt("../data/20250505_vs/variance_swap_Kvar_prediction.txt", skiprows=1, delimiter=",")
     Kvar, ML_predicted = data[:, 0], data[:, 1]
 
-    ax2.scatter(Kvar, ML_predicted, marker=".", s=2, facecolor="none", edgecolor="black")
+    ax2.scatter(Kvar, ML_predicted, marker=".", s=1, facecolor="none", edgecolor="gray")
     #Err = 100*np.abs(ML_predicted - Kvar)/np.maximum(Kvar, ML_predicted)
     scale = np.mean(np.abs(Kvar))  # or np.median(np.abs(Y)), or (Y.max()-Y.min())
     Err = 100 * np.abs(ML_predicted - Kvar) / scale
@@ -135,7 +136,7 @@ def plot_variance_swap_GPR_fitting(tex_lw=240.71031, ppi=72):
     ax2.text(0.7, 0.15, r"$(b)$", transform=ax2.transAxes, fontsize=9)
 
     plt.tight_layout(pad=0.2)
-    plt.savefig("./figures/variance_swap_GPR_fitting.png", dpi=ppi)
+    plt.savefig("./figures/variance_swap_GPR_fitting.png", dpi=300)
     plt.savefig("./figures/variance_swap_GPR_fitting.pdf", format="pdf")
     plt.show()
     plt.close()

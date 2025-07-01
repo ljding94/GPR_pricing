@@ -11,6 +11,8 @@ def main():
     #folder = "../data/20250430"
     folder = "../data/20250505_vs"
     folder = "../data/20250506"
+
+    folder = "../data/20250628" # newly runed data
     # rand_max = 1000
     # filter by inK
 
@@ -19,8 +21,8 @@ def main():
     #data_test = read_variance_swap_data(folder, "test")
 
     product = "american_put"
-    data_train = read_american_put_data(folder, "train", 120)
-    data_test =  read_american_put_data(folder, "test", 40)
+    data_train = read_american_put_data(folder, "train", 50)
+    data_test =  read_american_put_data(folder, "test", 10)
     print("np.shape(data_train)", len(data_train[0]))
     print("np.shape(data_test)", len(data_test[0]))
     #print("data", data[:10])
@@ -42,13 +44,21 @@ def main():
     #data_shuffled = [params_shuffled, params_tex, params_name, target_shuffled, target_tex, target_name]
 
 
-    perc_train = 0.917
-    #GaussianProcess_optimization(folder, data_train, perc_train, product)
+    #perc_train = 0.917
 
-    #all_feature_names, all_feature_mean, all_feature_std, all_gp_per_feature = read_gp_and_params_stats(folder, "_all")
+    perc_train = 1
+    '''
+    GaussianProcess_optimization(folder, data_train, perc_train, product)
+
+
+    all_feature_names, all_feature_mean, all_feature_std, all_gp_per_feature = read_gp_and_params_stats(folder, "_all")
 
 
     GaussianProcess_prediction(folder, data_test, product)
+    '''
+
+    GPtorch_optimization(folder, data_train, perc_train, product)
+    GPtorch_prediction(folder, data_test, product)
 
 
     #plot_data_distribution(data_train[3], data_test[3])

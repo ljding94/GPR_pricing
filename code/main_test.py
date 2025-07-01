@@ -5,6 +5,7 @@ from scipy.stats import norm
 import matplotlib.pyplot as plt
 from variance_swap import *
 
+
 def plot_price_surface(svi_params, r, K, T):
     a1, b, rho, m, sigma, lam = svi_params
     S0 = 1
@@ -28,9 +29,7 @@ def plot_price_surface(svi_params, r, K, T):
     ax.set_zlabel(r"$V$")
     ax.set_title("PSOR method")
     # plot the surface using CN method
-    price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all = price_american_option_CN(
-        S0, K, r, T, a1, b, rho, m, sigma, lam, option_type="call", M=400, N=400
-    )
+    price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all = price_american_option_CN(S0, K, r, T, a1, b, rho, m, sigma, lam, option_type="call", M=400, N=400)
     # Plot the 3D surface
     surf2 = ax2.plot_surface(S_grid, T_grid, V_all, cmap="rainbow", linewidth=0, antialiased=True)
     # Add a color bar
@@ -132,9 +131,7 @@ def plot_price_and_greeks(svi_params, r, K, T):
     print("American Call Price:", price)
 
     start_time = time.time()
-    price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all = price_american_option_CN(
-        S0, K, r, T, a1, b, rho, m, sigma, lam, option_type="call", M=500, N=500
-    )
+    price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all = price_american_option_CN(S0, K, r, T, a1, b, rho, m, sigma, lam, option_type="call", M=500, N=500)
     print("CN calculation time:", time.time() - start_time)
     ax1.plot(S_grid, price_t0, label="American Call (CN)")
     ax2.plot(S_grid, delta_t0, label="American Call (CN)")
@@ -150,9 +147,7 @@ def plot_price_and_greeks(svi_params, r, K, T):
     ax4.plot(S[ni:nf], theta_grid[ni:nf], label="American Put (PSOR)")
     print("American Put Price:", price)
 
-    price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all = price_american_option_CN(
-        S0, K, r, T, a1, b, rho, m, sigma, lam, option_type="put", M=1000, N=1000
-    )
+    price, delta, gamma, theta, price_t0, delta_t0, gamma_t0, theta_t0, S_grid, V_all = price_american_option_CN(S0, K, r, T, a1, b, rho, m, sigma, lam, option_type="put", M=1000, N=1000)
     ax1.plot(S_grid, price_t0, label="American put (CN)")
     ax2.plot(S_grid, delta_t0, label="American put (CN)")
     ax3.plot(S_grid, gamma_t0, label="American put (CN)")
@@ -235,11 +230,11 @@ def test_line_overlap():
 
     plt.figure(figsize=(8, 6))
     plt.plot(x, y, linestyle=(0, (1, 4)), label="Line 0")
-    plt.plot(x, y+0.1, linestyle=(0, (2, 3)), label="Line 1")
-    plt.plot(x, y+0.2,linestyle=(-1, (2, 3)), label="Line 2")
-    plt.plot(x, y+0.3,linestyle=(-2, (2, 3)), label="Line 3")
-    plt.plot(x, y+0.4,linestyle=(-3, (2, 3)), label="Line 4")
-    plt.plot(x, y+0.5,linestyle=(-4, (2, 3)), label="Line 5")
+    plt.plot(x, y + 0.1, linestyle=(0, (2, 3)), label="Line 1")
+    plt.plot(x, y + 0.2, linestyle=(-1, (2, 3)), label="Line 2")
+    plt.plot(x, y + 0.3, linestyle=(-2, (2, 3)), label="Line 3")
+    plt.plot(x, y + 0.4, linestyle=(-3, (2, 3)), label="Line 4")
+    plt.plot(x, y + 0.5, linestyle=(-4, (2, 3)), label="Line 5")
     plt.legend
     plt.show()
 
@@ -252,11 +247,12 @@ def test_variance_swap_running_time():
     elapsed = time.time() - start
     print(f"Generated in {elapsed:.4f} seconds")
 
+
 def test_american_put_running_time():
     folder = "../data/data_test"
-    #M,N= 1000, 1000
-    #M,N= 500, 500
-    M,N= 200, 200
+    # M,N= 1000, 1000
+    # M,N= 500, 500
+    M, N = 200, 200
     n_prices = 0
     start = time.time()
     elapsed = 0
@@ -267,14 +263,58 @@ def test_american_put_running_time():
         print(f"Generated {n_prices} prices for M={M}, N={N} in {elapsed:.4f} seconds")
 
 
+def test_atm_vol_range():
+
+    N_data = 100000
+    S0 = 1
+
+    T = 1.0
+    # logK_vals = np.random.uniform(-0.15, 0.15, N_data)  # log strike prices
+    K_vals = np.random.uniform(0.85, 1.15, N_data)  # strike prices
+    # K_vals = S0 * np.exp(logK_vals)  # strike prices
+    r_vals = np.random.uniform(0.00, 0.06, N_data)  # risk-free rate
+    # SVI parameters
+    a1_vals = np.random.uniform(0.00, 0.02, N_data)  # a1>0
+    b_vals = np.random.uniform(0.00, 0.3, N_data)  # b>0
+    rho_vals = np.random.uniform(-0.4, 0.8, N_data)  # |rho|<1
+    m_vals = np.random.uniform(-0.2, 0.6, N_data)  # m unlimited
+    sigma_vals = np.random.uniform(0.00, 1.0, N_data)  # sigma>0
+    lam_vals = np.random.uniform(0.00, 1.0, N_data)
+
+    w0 = calc_raw_SVI_skew_T1(0, a1_vals, b_vals, rho_vals, m_vals, sigma_vals)
+    bs_vol = np.sqrt(w0)
+    print("min(bs_vol), max(bs_vol)")
+    print(min(bs_vol), max(bs_vol))
+    plt.figure()
+    plt.hist(bs_vol, bins=100, density=True, alpha=0.5, color="blue", label="BS Vol")
+    plt.xlabel("ATM Volatility")
+    plt.ylabel("Density")
+    plt.title("Distribution of ATM Volatility")
+    plt.legend()
+    plt.grid()
+    plt.show()
+    plt.close()
+
+
+def test_atm_vol():
+    w0 = calc_raw_SVI_skew_T1(0, 0.01, 0.15, -0.1, 0.2, 0.2)
+    bs_vol = np.sqrt(w0)
+    print("ATM Variance:", w0)
+    print("ATM Volatility:", bs_vol)
+
+
+
 def main():
-    test_variance_swap_running_time()
-    #test_american_put_running_time()
+    test_atm_vol()
+    #test_atm_vol_range()
+
+    # test_variance_swap_running_time()
+    # test_american_put_running_time()
     return 0
     # S, P, lbd = build_binomial_tree(100, 5, 0.03, 5, (100, 0.1, -0.05), "Derman")
     # S, P, lbd = build_binomial_tree(100, 2, 0.03, 2, (0.1,0), "flat")
-    #test_line_overlap()
-    #return 0
+    # test_line_overlap()
+    # return 0
     # res = flat_vol_american_put_tree_greeks(100, 100, 0.03, 0.1, 1, 100)
     # print(res)
     S0 = 1.0
@@ -287,7 +327,7 @@ def main():
     # a1, b, rho, m, sigma, lam = 0.03, 0.01, -0.4, 0.2, 0.3, 0.1
     a1, b, rho, m, sigma, lam = 0.03, 0.02, -0.4, 0.2, 0.3, 0.1
     a1, b, rho, m, sigma, lam = 0.03, 0.0, 0, 0.0, 0.01, 0.0
-    #plot_price_surface((a1, b, rho, m, sigma, lam), r, K, T)
+    # plot_price_surface((a1, b, rho, m, sigma, lam), r, K, T)
     plot_price_and_greeks((a1, b, rho, m, sigma, lam), r, K, T)
     return 0
 
